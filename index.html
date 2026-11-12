@@ -54,7 +54,7 @@
         .drawer-overlay.open { display: block; }
 
         /* Hide old bulky navigation */
-        .main-nav, .master-toggle, .filter-row { display: none !important; }
+        .main-nav, .master-toggle { display: none !important; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         body.heatmap-active .container { max-width: 1040px; }
@@ -68,6 +68,8 @@
         .heatmap-filter-controls { display: flex; flex-direction: column; gap: 10px; }
         .heatmap-filter-controls label { display: block; color: var(--text-muted); font-size: 11px; margin-bottom: 4px; }
         .heatmap-filter-controls select, .heatmap-filter-controls input { width: 100%; padding: 9px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font: inherit; }
+        #expenseFilters label { display: block; color: var(--text-muted); font-size: 11px; margin-bottom: -6px; }
+        #expenseFilters select, #expenseFilters input { width: 100%; padding: 9px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font: inherit; }
         .heatmap-date-range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .heatmap-clear-btn { padding: 9px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
         .heatmap-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
@@ -198,15 +200,24 @@
     <div>
         <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">FILTERS</div>
         <div class="filter-row" id="expenseFilters" style="flex-direction:column; display:flex; gap:10px; margin-bottom:10px;">
+            <label for="filterType">Type</label>
             <select id="filterType" onchange="applyFilters()"><option value="all">All Types</option><option value="income">Income</option><option value="expense">Expenses</option></select>
-            <select id="filterCategory" onchange="applyFilters()"><option value="all">All Categories</option></select>
-            <select id="filterSubCat" onchange="applyFilters()"><option value="all">All Sub Cats</option></select>
-            <select id="filterExpPlace" onchange="applyFilters()"><option value="all">All Places</option></select>
-            <select id="filterMonth" onchange="applyFilters()"><option value="all">All Months</option></select>
-            <div class="form-row">
+            <label for="filterDateMode">Date filter</label>
+            <select id="filterDateMode" onchange="changeExpenseDateMode()"><option value="month">Month</option><option value="range">Date range</option></select>
+            <div id="filterMonthControl">
+                <label for="filterMonth">Month</label>
+                <select id="filterMonth" onchange="applyFilters()"><option value="all">All Months</option></select>
+            </div>
+            <div id="filterDateRange" class="form-row" style="display:none;">
                 <div class="form-group" style="margin-bottom:0;"><label>From</label><input type="date" id="fromDate" onchange="applyFilters()" /></div>
                 <div class="form-group" style="margin-bottom:0;"><label>To</label><input type="date" id="toDate" onchange="applyFilters()" /></div>
             </div>
+            <label for="filterCategory">Category</label>
+            <select id="filterCategory" onchange="applyFilters()"><option value="all">All Categories</option></select>
+            <label for="filterSubCat">Subcategory</label>
+            <select id="filterSubCat" onchange="applyFilters()"><option value="all">All Subcategories</option></select>
+            <label for="filterExpPlace">Place</label>
+            <select id="filterExpPlace" onchange="applyFilters()"><option value="all">All Places</option></select>
         </div>
         <div class="filter-row" id="businessFilters" style="display:none; flex-direction:column; gap:10px;">
             <select id="bizFilterType" onchange="applyFilters()"><option value="all">All Types</option></select>
@@ -670,11 +681,44 @@
         var dateInput = document.getElementById('txDate'); if (dateInput && !dateInput.value) dateInput.value = todayISO();
     }
 
-    function populateMonthFilter() { 
-        var monthSelect = document.getElementById('filterMonth'); if (!monthSelect) return; 
-        var months = {}; appData.transactions.forEach(function(tx) { if (tx.month) months[tx.month] = true; }); 
-        monthSelect.innerHTML = '<option value="all">All Months</option>'; 
-        Object.keys(months).sort().forEach(function(m) { var opt = document.createElement('option'); opt.value = m; opt.textContent = m; monthSelect.appendChild(opt); }); 
+    function getTransactionMonthKey(dateStr) {
+        var dateText = (dateStr || '').toString().trim();
+        var isoMatch = dateText.match(/^(\d{4})-(\d{1,2})/);
+        if (isoMatch) return isoMatch[1] + '-' + String(isoMatch[2]).padStart(2, '0');
+        var date = parseDate(dateText);
+        if (!date) return '';
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+    }
+
+    function populateMonthFilter() {
+        var monthSelect = document.getElementById('filterMonth');
+        if (!monthSelect) return;
+        var months = {};
+        appData.transactions.concat(appData.onlineTransactions).forEach(function(tx) {
+            var monthKey = getTransactionMonthKey(tx.date);
+            if (monthKey) months[monthKey] = true;
+        });
+        var currentMonth = todayISO().slice(0, 7);
+        months[currentMonth] = true;
+        var selectedMonth = monthSelect.dataset.initialized === 'true' ? monthSelect.value : currentMonth;
+        monthSelect.innerHTML = '<option value="all">All Months</option>';
+        Object.keys(months).sort().reverse().forEach(function(monthKey) {
+            var parts = monthKey.split('-');
+            var monthName = new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleString('default', { month: 'long' });
+            var option = document.createElement('option');
+            option.value = monthKey;
+            option.textContent = monthName + ' ' + parts[0];
+            monthSelect.appendChild(option);
+        });
+        monthSelect.value = months[selectedMonth] ? selectedMonth : currentMonth;
+        monthSelect.dataset.initialized = 'true';
+    }
+
+    function changeExpenseDateMode() {
+        var useRange = document.getElementById('filterDateMode').value === 'range';
+        document.getElementById('filterMonthControl').style.display = useRange ? 'none' : 'block';
+        document.getElementById('filterDateRange').style.display = useRange ? 'grid' : 'none';
+        applyFilters();
     }
 
     function populateExpPlaceFilter() { 
@@ -839,6 +883,7 @@
         var filterSubCat = document.getElementById('filterSubCat')?.value || 'all';
         var filterExpPlace = document.getElementById('filterExpPlace')?.value || 'all';
         var filterMonth = document.getElementById('filterMonth')?.value || 'all';
+        var filterDateMode = document.getElementById('filterDateMode')?.value || 'month';
         var fromDate = document.getElementById('fromDate')?.value || '';
         var toDate = document.getElementById('toDate')?.value || '';
 
@@ -847,7 +892,7 @@
         
         if (filterCategory !== 'all') {
             filtered = filtered.filter(t => {
-                return (t.expType && t.expType.trim() === filterCategory) || (t.subCat && t.subCat.trim() === filterCategory) || (t.type && t.type.trim() === filterCategory);
+                return (t.expType && t.expType.trim() === filterCategory) || (t.type && t.type.trim() === filterCategory);
             });
         }
         if (filterSubCat !== 'all') {
@@ -858,9 +903,9 @@
         if (filterExpPlace !== 'all') {
             filtered = filtered.filter(t => t.expPlace && t.expPlace.trim() === filterExpPlace);
         }
-        if (filterMonth !== 'all') filtered = filtered.filter(t => t.month === filterMonth);
-        if (fromDate) filtered = filtered.filter(t => t.date >= fromDate);
-        if (toDate) filtered = filtered.filter(t => t.date <= toDate);
+        if (filterDateMode === 'month' && filterMonth !== 'all') filtered = filtered.filter(t => getTransactionMonthKey(t.date) === filterMonth);
+        if (filterDateMode === 'range' && fromDate) filtered = filtered.filter(t => t.date >= fromDate);
+        if (filterDateMode === 'range' && toDate) filtered = filtered.filter(t => t.date <= toDate);
 
         if (filtered.length === 0) { 
             container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;">No records found</p>'; 
@@ -1644,7 +1689,7 @@
         }
 
         if (tabId === 'all-transactions' || tabId === 'offline' || tabId === 'online') {
-            var filterType = document.getElementById('filterType')?.value || 'all'; var filterCategory = document.getElementById('filterCategory')?.value || 'all'; var filterSubCat = document.getElementById('filterSubCat')?.value || 'all'; var filterExpPlace = document.getElementById('filterExpPlace')?.value || 'all'; var filterMonth = document.getElementById('filterMonth')?.value || 'all'; var fromDate = document.getElementById('fromDate')?.value || ''; var toDate = document.getElementById('toDate')?.value || '';
+            var filterType = document.getElementById('filterType')?.value || 'all'; var filterCategory = document.getElementById('filterCategory')?.value || 'all'; var filterSubCat = document.getElementById('filterSubCat')?.value || 'all'; var filterExpPlace = document.getElementById('filterExpPlace')?.value || 'all'; var filterMonth = document.getElementById('filterMonth')?.value || 'all'; var filterDateMode = document.getElementById('filterDateMode')?.value || 'month'; var fromDate = document.getElementById('fromDate')?.value || ''; var toDate = document.getElementById('toDate')?.value || '';
             
             var allTx = [];
             if (tabId === 'all-transactions') { appData.transactions.forEach(tx => allTx.push(Object.assign({}, tx, {mode: 'OFFLINE'}))); appData.onlineTransactions.forEach(tx => allTx.push(Object.assign({}, tx, {mode: 'ONLINE'}))); } 
@@ -1653,11 +1698,11 @@
             
             var filteredTx = allTx.filter(function(t) {
                 if (filterType === 'income' && t.dr <= 0) return false; if (filterType === 'expense' && t.cr <= 0) return false;
-                if (filterCategory !== 'all' && !((t.expType && t.expType.trim() === filterCategory) || (t.subCat && t.subCat.trim() === filterCategory))) return false;
+                if (filterCategory !== 'all' && !((t.expType && t.expType.trim() === filterCategory) || (t.type && t.type.trim() === filterCategory))) return false;
                 if (filterSubCat !== 'all' && !((t.subCat && t.subCat.trim() === filterSubCat) || (t.subCat2 && t.subCat2.trim() === filterSubCat))) return false;
                 if (filterExpPlace !== 'all' && (!t.expPlace || t.expPlace.trim() !== filterExpPlace)) return false;
-                if (filterMonth !== 'all' && t.month !== filterMonth) return false;
-                if (fromDate && t.date < fromDate) return false; if (toDate && t.date > toDate) return false;
+                if (filterDateMode === 'month' && filterMonth !== 'all' && getTransactionMonthKey(t.date) !== filterMonth) return false;
+                if (filterDateMode === 'range' && fromDate && t.date < fromDate) return false; if (filterDateMode === 'range' && toDate && t.date > toDate) return false;
                 if (currentWalletFilter !== 'ALL' && t.spentFrom !== currentWalletFilter) return false;
                 return true;
             });
