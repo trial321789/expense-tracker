@@ -52,6 +52,7 @@
         .side-drawer-right.open { right: 0; }
         .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; display: none; backdrop-filter: blur(2px); }
         .drawer-overlay.open { display: block; }
+        body.drawer-open { position: fixed; width: 100%; overflow: hidden; }
 
         /* Hide old bulky navigation */
         .main-nav, .master-toggle { display: none !important; }
@@ -154,7 +155,7 @@
         .wallet-btn:hover { background: var(--bg-input); color: var(--text-primary); }
         .wallet-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
 
-        @media (max-width: 400px) { .stats-grid { grid-template-columns: 1fr 1fr; } .form-row { grid-template-columns: 1fr; } }
+        @media (max-width: 400px) { .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .form-row { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -200,6 +201,8 @@
     <div>
         <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">FILTERS</div>
         <div class="filter-row" id="expenseFilters" style="flex-direction:column; display:flex; gap:10px; margin-bottom:10px;">
+            <label for="filterSearch">Search transactions</label>
+            <input id="filterSearch" type="search" placeholder="Enter a name, category, place..." oninput="applyFilters()" autocomplete="off" />
             <label for="filterType">Type</label>
             <select id="filterType" onchange="applyFilters()"><option value="all">All Types</option><option value="income">Income</option><option value="expense">Expenses</option></select>
             <label for="filterDateMode">Date filter</label>
@@ -519,6 +522,7 @@
     };
 
     let appData = { transactions: [], onlineTransactions: [], donations: [], receivables: [], lending: [], savings: [], categories: [], businessInventory: [], budgetData: [] };
+    var drawerScrollPosition = 0;
 
     function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
     function formatCurrency(n) { 
@@ -842,6 +846,16 @@
 
     function getMonthName(dateStr) { if (!dateStr) return ''; var months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']; return months[new Date(dateStr).getMonth()]; }
 
+    function matchesFilterSearch(record, query) {
+        var terms = (query || '').toString().toLowerCase().trim().split(/\s+/).filter(Boolean);
+        if (terms.length === 0) return true;
+        var searchableFields = ['purpose', 'expType', 'subCat', 'subCat2', 'expPlace', 'spentFrom', 'notes', 'person', 'place', 'type', 'yetToReceive', 'receiveIn', 'givenFrom', 'receivedIn', 'date', 'mode', 'dr', 'cr'];
+        var searchableText = searchableFields.map(function(field) {
+            return record[field] == null ? '' : String(record[field]);
+        }).join(' ').toLowerCase();
+        return terms.every(function(term) { return searchableText.indexOf(term) !== -1; });
+    }
+
     function applyFilters() {
         var activeTab = document.querySelector('.tab-content.active')?.id.replace('tab-', '') || 'all-transactions';
         var globalButton = document.getElementById('btn-global');
@@ -879,6 +893,7 @@
         }
         
         var filterType = document.getElementById('filterType')?.value || 'all';
+        var filterSearch = document.getElementById('filterSearch')?.value || '';
         var filterCategory = document.getElementById('filterCategory')?.value || 'all';
         var filterSubCat = document.getElementById('filterSubCat')?.value || 'all';
         var filterExpPlace = document.getElementById('filterExpPlace')?.value || 'all';
@@ -887,6 +902,7 @@
         var fromDate = document.getElementById('fromDate')?.value || '';
         var toDate = document.getElementById('toDate')?.value || '';
 
+        if (filterSearch.trim()) filtered = filtered.filter(t => matchesFilterSearch(t, filterSearch));
         if (filterType === 'income') filtered = filtered.filter(t => (options.getDR ? options.getDR(t) : t.dr) > 0);
         if (filterType === 'expense') filtered = filtered.filter(t => (options.getCR ? options.getCR(t) : t.cr) > 0);
         
@@ -1689,7 +1705,7 @@
         }
 
         if (tabId === 'all-transactions' || tabId === 'offline' || tabId === 'online') {
-            var filterType = document.getElementById('filterType')?.value || 'all'; var filterCategory = document.getElementById('filterCategory')?.value || 'all'; var filterSubCat = document.getElementById('filterSubCat')?.value || 'all'; var filterExpPlace = document.getElementById('filterExpPlace')?.value || 'all'; var filterMonth = document.getElementById('filterMonth')?.value || 'all'; var filterDateMode = document.getElementById('filterDateMode')?.value || 'month'; var fromDate = document.getElementById('fromDate')?.value || ''; var toDate = document.getElementById('toDate')?.value || '';
+            var filterSearch = document.getElementById('filterSearch')?.value || ''; var filterType = document.getElementById('filterType')?.value || 'all'; var filterCategory = document.getElementById('filterCategory')?.value || 'all'; var filterSubCat = document.getElementById('filterSubCat')?.value || 'all'; var filterExpPlace = document.getElementById('filterExpPlace')?.value || 'all'; var filterMonth = document.getElementById('filterMonth')?.value || 'all'; var filterDateMode = document.getElementById('filterDateMode')?.value || 'month'; var fromDate = document.getElementById('fromDate')?.value || ''; var toDate = document.getElementById('toDate')?.value || '';
             
             var allTx = [];
             if (tabId === 'all-transactions') { appData.transactions.forEach(tx => allTx.push(Object.assign({}, tx, {mode: 'OFFLINE'}))); appData.onlineTransactions.forEach(tx => allTx.push(Object.assign({}, tx, {mode: 'ONLINE'}))); } 
@@ -1697,6 +1713,7 @@
             else if (tabId === 'online') appData.onlineTransactions.forEach(tx => allTx.push(Object.assign({}, tx, {mode: 'ONLINE'})));
             
             var filteredTx = allTx.filter(function(t) {
+                if (!matchesFilterSearch(t, filterSearch)) return false;
                 if (filterType === 'income' && t.dr <= 0) return false; if (filterType === 'expense' && t.cr <= 0) return false;
                 if (filterCategory !== 'all' && !((t.expType && t.expType.trim() === filterCategory) || (t.type && t.type.trim() === filterCategory))) return false;
                 if (filterSubCat !== 'all' && !((t.subCat && t.subCat.trim() === filterSubCat) || (t.subCat2 && t.subCat2.trim() === filterSubCat))) return false;
@@ -1850,17 +1867,30 @@
     }
 
     function toggleLeftDrawer() {
+        lockPageScroll();
         document.getElementById('leftDrawer').classList.add('open');
         document.getElementById('drawerOverlay').classList.add('open');
     }
     function toggleRightDrawer() {
+        lockPageScroll();
         document.getElementById('rightDrawer').classList.add('open');
         document.getElementById('drawerOverlay').classList.add('open');
+    }
+    function lockPageScroll() {
+        if (document.body.classList.contains('drawer-open')) return;
+        drawerScrollPosition = window.scrollY;
+        document.body.style.top = '-' + drawerScrollPosition + 'px';
+        document.body.classList.add('drawer-open');
     }
     function closeDrawers() {
         document.getElementById('leftDrawer').classList.remove('open');
         document.getElementById('rightDrawer').classList.remove('open');
         document.getElementById('drawerOverlay').classList.remove('open');
+        if (document.body.classList.contains('drawer-open')) {
+            document.body.classList.remove('drawer-open');
+            document.body.style.top = '';
+            window.scrollTo(0, drawerScrollPosition);
+        }
     }
     function toggleDrillDown(id) {
         var menu = document.getElementById(id);
