@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>💰 Expense & Business Tracker</title>
+
+    <style>
+        :root {
+            --bg-primary: #0a0a1a;
+            --bg-secondary: #12122a;
+            --bg-card: #1a1a3a;
+            --bg-input: #252550;
+            --text-primary: #e8e8f0;
+            --text-secondary: #a0a0b8;
+            --text-muted: #6a6a82;
+            --border-color: #2a2a4a;
+            --green: #4ade80;
+            --red: #f87171;
+            --gold: #fbbf24;
+            --blue: #60a5fa;
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 16px;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+
+        /* ✅ MOBILE APP LAYOUT */
+        .app-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: var(--bg-secondary); border-radius: var(--radius); margin-bottom: 12px; position: sticky; top: 10px; z-index: 100; border: 1px solid var(--border-color); }
+        .app-header .header-title { font-size: 16px; font-weight: 700; color: var(--gold); }
+        .icon-btn { background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        .side-drawer-left { position: fixed; top: 0; left: -300px; width: 280px; height: 100vh; background: var(--bg-secondary); z-index: 1000; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.5); display: flex; flex-direction: column; }
+        .side-drawer-left.open { left: 0; }
+        .drawer-header { padding: 20px; border-bottom: 1px solid var(--border-color); font-size: 18px; font-weight: 700; color: var(--gold); }
+        .drawer-nav { display: flex; flex-direction: column; padding: 10px; gap: 4px; overflow-y: auto; }
+        .nav-item { padding: 12px 16px; background: transparent; border: none; color: var(--text-secondary); font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; text-align: left; width: 100%; }
+        .nav-item:hover, .nav-item.active { background: var(--bg-input); color: var(--gold); }
+        .sub-menu { display: none; flex-direction: column; padding-left: 20px; margin-top: 4px; border-left: 2px solid var(--border-color); margin-left: 16px; }
+        .sub-menu.open { display: flex; }
+        .sub-item { padding: 10px 16px; background: transparent; border: none; color: var(--text-muted); font-size: 13px; font-weight: 500; border-radius: 8px; cursor: pointer; text-align: left; width: 100%; }
+        .sub-item:hover, .sub-item.active { color: var(--gold); background: rgba(251, 191, 36, 0.1); }
+        
+        .side-drawer-right { position: fixed; top: 0; right: -340px; width: 320px; height: 100vh; background: var(--bg-card); z-index: 1000; transition: right 0.3s ease; box-shadow: -2px 0 10px rgba(0,0,0,0.5); padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+        .side-drawer-right.open { right: 0; }
+        .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; display: none; backdrop-filter: blur(2px); }
+        .drawer-overlay.open { display: block; }
+
+        /* Hide old bulky navigation */
+        .main-nav, .master-toggle, .filter-row { display: none !important; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        body.heatmap-active .container { max-width: 1040px; }
+        body.heatmap-active #walletNav { display: none !important; }
+        body.heatmap-active .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        body.heatmap-active .stat-card { min-width: 0; padding: 8px 4px; }
+        body.heatmap-active .stat-card .label { font-size: 8px; }
+        body.heatmap-active .stat-card .value { font-size: 13px; overflow-wrap: anywhere; }
+        #heatmapFilters { display: none; }
+        body.heatmap-active #heatmapFilters { display: block; }
+        .heatmap-filter-controls { display: flex; flex-direction: column; gap: 10px; }
+        .heatmap-filter-controls label { display: block; color: var(--text-muted); font-size: 11px; margin-bottom: 4px; }
+        .heatmap-filter-controls select, .heatmap-filter-controls input { width: 100%; padding: 9px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font: inherit; }
+        .heatmap-date-range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .heatmap-clear-btn { padding: 9px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
+        .heatmap-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+        .heatmap-panel, .heatmap-summary { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 14px; }
+        .heatmap-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+        .heatmap-weekday { text-align: center; color: var(--text-muted); font-size: 11px; padding: 4px 0; }
+        .heatmap-day { min-height: 66px; padding: 6px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); }
+        .heatmap-day.empty { visibility: hidden; }
+        .heatmap-day.today { outline: 1px solid var(--gold); }
+        .heatmap-day-number { font-size: 11px; color: var(--text-secondary); }
+        .heatmap-day-amount { margin-top: 12px; font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
+        .heatmap-legend { display: flex; justify-content: flex-end; align-items: center; gap: 5px; color: var(--text-muted); font-size: 10px; margin-top: 10px; }
+        .heatmap-legend-swatch { width: 14px; height: 10px; border-radius: 3px; }
+        .heatmap-summary-total { color: var(--gold); font-size: 20px; font-weight: 700; margin: 8px 0 12px; }
+        .heatmap-summary-list { display: flex; flex-direction: column; gap: 8px; max-height: 65vh; overflow-y: auto; }
+        .heatmap-summary-item { padding: 9px; background: var(--bg-card); border-radius: 8px; }
+        .heatmap-summary-source { color: var(--blue); font-size: 11px; font-weight: 700; }
+        .heatmap-summary-recipient { margin: 4px 0; font-size: 12px; overflow-wrap: anywhere; }
+        .heatmap-summary-amount { color: var(--red); font-size: 12px; font-weight: 700; }
+        @media (max-width: 700px) { .heatmap-layout { grid-template-columns: 1fr; } .heatmap-summary-list { max-height: none; } }
+        @media (max-width: 400px) { body.heatmap-active .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } body.heatmap-active .stat-card .value { font-size: 11px; } .heatmap-day { min-height: 56px; padding: 4px; } .heatmap-day-amount { font-size: 9px; } }
+        #walletNav { display: flex !important; flex-wrap: wrap; gap: 6px; padding: 0; margin-bottom: 0; border-bottom: none; }
+
+        /* CONTAINER STYLES */
+        .month-container { background: var(--bg-primary); padding: 12px; border-radius: 16px; margin-bottom: 16px; border: 1px solid var(--border-color); }
+        .week-total { background: rgba(251, 191, 36, 0.1); color: var(--text-primary); padding: 8px 14px; border-radius: 8px; margin: 0 0 12px 0; font-size: 12px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--gold); }
+        .day-footer { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; }
+
+        /* HEADER & STATS */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 8px; text-align: center; }
+        .stat-card .label { font-size: 8px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; }
+        .stat-card .value { font-size: 14px; font-weight: 700; margin-top: 2px; }
+        .stat-card .value.green { color: var(--green); }
+        .stat-card .value.red { color: var(--red); }
+        .stat-card .value.gold { color: var(--gold); }
+        .stat-card .value.blue { color: var(--blue); }
+
+        /* BUTTONS & FILTERS */
+        .btn-primary { background: var(--gold); color: #0a0a1a; border: none; padding: 8px 16px; border-radius: 12px; font-weight: 600; font-size: 12px; cursor: pointer; width: 100%; font-family: inherit; margin-bottom: 8px; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* FORMS & MODALS */
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; color: var(--text-primary); font-size: 14px; font-family: inherit; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1001; display: none; align-items: flex-end; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-overlay.active { display: flex; }
+        .modal { background: var(--bg-secondary); width: 100%; max-width: 480px; max-height: 90vh; border-radius: 20px 20px 0 0; padding: 20px; overflow-y: auto; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+        .modal-close { background: var(--bg-input); border: none; color: var(--text-secondary); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px; }
+
+        /* CARDS & ITEMS */
+        .day-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px; }
+        .day-card .day-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); padding-bottom: 6px; border-bottom: 1px solid var(--border-color); margin-bottom: 6px; }
+        
+        .tx-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
+        .tx-left .tx-desc { font-size: 13px; font-weight: 500; }
+        .tx-left .tx-source { font-size: 11px; color: var(--text-muted); }
+        .tx-right { font-weight: 600; font-size: 14px; flex-shrink: 0; padding-left: 12px; }
+        .tx-right.positive { color: var(--green); }
+        .tx-right.negative { color: var(--red); }
+
+        .tx-notes { display: none; padding: 8px 10px; margin-top: 4px; background: var(--bg-input); border-radius: 8px; font-size: 12px; color: var(--text-secondary); border-left: 2px solid var(--gold); line-height: 1.5; }
+        .tx-notes.open { display: block; }
+
+        .week-total, .month-total { background: var(--bg-input); padding: 6px 14px; border-radius: 8px; margin: 8px 0; border-left: 3px solid var(--blue); font-size: 12px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
+        .month-total { border-left-color: var(--gold); font-size: 13px; font-weight: 600; margin: 12px 0 8px 0; }
+
+        .biz-progress-bg { background: var(--bg-input); border-radius: 4px; height: 6px; width: 100%; margin-top: 6px; overflow: hidden; }
+        .biz-progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+
+        .loading { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+        .loading .spinner { width: 32px; height: 32px; border: 3px solid var(--border-color); border-top-color: var(--gold); border-radius: 50%; display: inline-block; animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .wallet-btn { flex: 0 0 auto; padding: 4px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-muted); cursor: pointer; font-weight: 600; font-family: inherit; font-size: 10px; white-space: nowrap; transition: all 0.2s; }
+        .wallet-btn:hover { background: var(--bg-input); color: var(--text-primary); }
+        .wallet-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
+
+        @media (max-width: 400px) { .stats-grid { grid-template-columns: 1fr 1fr; } .form-row { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawers()"></div>
+
+<div class="side-drawer-left" id="leftDrawer">
+    <div class="drawer-header">💰 Mom's Tracker</div>
+    <div class="drawer-nav">
+        <button class="nav-item" onclick="switchTab('all-transactions'); closeDrawers();">📊 All Transactions</button>
+        <button class="nav-item" onclick="switchTab('offline'); closeDrawers();">📴 Offline</button>
+        <button class="nav-item" onclick="switchTab('online'); closeDrawers();">🌐 Online</button>
+        <button class="nav-item" onclick="switchTab('offerings'); closeDrawers();">🙏 Donations</button>
+        <button class="nav-item" onclick="switchTab('receivables'); closeDrawers();">📥 Receivables</button>
+        <button class="nav-item" onclick="switchTab('lending'); closeDrawers();">🤝 Lending</button>
+        <button class="nav-item" onclick="switchTab('savings'); closeDrawers();">💰 Savings</button>
+        <button class="nav-item" onclick="switchTab('unknown'); closeDrawers();">💵 Unknown/Inward</button>
+        <button class="nav-item" onclick="switchTab('heatmap'); closeDrawers();">🗓️ Spending Heat Map</button>
+        <button class="nav-item" onclick="toggleDrillDown('bizMenu')"><span>🏭 Business</span><span id="bizArrow">▼</span></button>
+        <div class="sub-menu" id="bizMenu">
+            <button class="sub-item" onclick="switchTab('biz-all'); closeDrawers();">📦 All Business</button>
+            <button class="sub-item" onclick="switchTab('stencil'); closeDrawers();">✂️ Stencil</button>
+            <button class="sub-item" onclick="switchTab('naturals'); closeDrawers();">🌿 Naturals</button>
+        </div>
+    </div>
+</div>
+
+<div class="side-drawer-right" id="rightDrawer">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="font-size:16px; color:var(--gold);">⚙️ Controls</h2>
+        <button class="icon-btn" onclick="closeDrawers()" style="padding:4px 8px;">✕</button>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn-primary" id="addBtn" onclick="showAddTransaction()">➕ Add Transaction</button>
+        <button class="btn-primary" onclick="switchMasterTracker('global')" style="background:var(--blue); color:white;">🌍 Global View</button>
+    </div>
+    <hr style="border-color:var(--border-color); margin:4px 0;">
+    <div>
+        <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">WALLETS</div>
+        <div class="wallet-nav" id="walletNav" style="display:flex; flex-wrap:wrap; gap:6px; padding:0;"></div>
+    </div>
+    <hr style="border-color:var(--border-color); margin:4px 0;">
+    <div>
+        <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">FILTERS</div>
+        <div class="filter-row" id="expenseFilters" style="flex-direction:column; display:flex; gap:10px; margin-bottom:10px;">
+            <select id="filterType" onchange="applyFilters()"><option value="all">All Types</option><option value="income">Income</option><option value="expense">Expenses</option></select>
+            <select id="filterCategory" onchange="applyFilters()"><option value="all">All Categories</option></select>
+            <select id="filterSubCat" onchange="applyFilters()"><option value="all">All Sub Cats</option></select>
+            <select id="filterExpPlace" onchange="applyFilters()"><option value="all">All Places</option></select>
+            <select id="filterMonth" onchange="applyFilters()"><option value="all">All Months</option></select>
+            <div class="form-row">
+                <div class="form-group" style="margin-bottom:0;"><label>From</label><input type="date" id="fromDate" onchange="applyFilters()" /></div>
+                <div class="form-group" style="margin-bottom:0;"><label>To</label><input type="date" id="toDate" onchange="applyFilters()" /></div>
+            </div>
+        </div>
+        <div class="filter-row" id="businessFilters" style="display:none; flex-direction:column; gap:10px;">
+            <select id="bizFilterType" onchange="applyFilters()"><option value="all">All Types</option></select>
+            <select id="bizFilterParticulars" onchange="applyFilters()"><option value="all">All Particulars</option></select>
+            <select id="bizFilterMaterials" onchange="applyFilters()"><option value="all">All Materials</option></select>
+            <select id="bizFilterMonth" onchange="applyFilters()"><option value="all">All Months</option></select>
+            <div class="form-row">
+                <div class="form-group" style="margin-bottom:0;"><label>From</label><input type="date" id="bizFromDate" onchange="applyFilters()" /></div>
+                <div class="form-group" style="margin-bottom:0;"><label>To</label><input type="date" id="bizToDate" onchange="applyFilters()" /></div>
+            </div>
+        </div>
+        <div id="heatmapFilters">
+            <div class="heatmap-filter-controls">
+                <div><label for="heatmapPeriod">Heat map view</label><select id="heatmapPeriod" onchange="renderHeatmap()"><option value="month">Month</option><option value="week">Week</option></select></div>
+                <div><label for="heatmapDateMode">Date filter</label><select id="heatmapDateMode" onchange="changeHeatmapDateMode()"><option value="month">Month</option><option value="range">Date range</option></select></div>
+                <div id="heatmapMonthControl"><label for="heatmapMonth">Month</label><input id="heatmapMonth" type="month" onchange="renderHeatmap()" /></div>
+                <div id="heatmapWeekControl" style="display:none;"><label for="heatmapWeek">Week</label><select id="heatmapWeek" onchange="renderHeatmap()"></select></div>
+                <div class="heatmap-date-range" id="heatmapDateRange" style="display:none;">
+                    <div><label for="heatmapFromDate">From</label><input id="heatmapFromDate" type="date" onchange="renderHeatmap()" /></div>
+                    <div><label for="heatmapToDate">To</label><input id="heatmapToDate" type="date" onchange="renderHeatmap()" /></div>
+                </div>
+                <div><label for="heatmapType">Record type</label><select id="heatmapType" onchange="renderHeatmap()"><option value="all">All spending</option></select></div>
+                <div><label for="heatmapCategory">Category</label><select id="heatmapCategory" onchange="renderHeatmap()"><option value="all">All categories</option></select></div>
+                <div><label for="heatmapSubCategory">Subcategory</label><select id="heatmapSubCategory" onchange="renderHeatmap()"><option value="all">All subcategories</option></select></div>
+                <div><label for="heatmapPlace">Place</label><select id="heatmapPlace" onchange="renderHeatmap()"><option value="all">All places</option></select></div>
+                <button class="heatmap-clear-btn" type="button" onclick="clearHeatmapFilters()">Clear filters</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- APP HEADER -->
+    <div class="app-header">
+        <button class="icon-btn" onclick="toggleLeftDrawer()">☰</button>
+        <div class="header-title" id="currentTabTitle">All Transactions</div>
+        <button class="icon-btn" onclick="toggleRightDrawer()">⋮</button>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="label" id="label0">Total Expense</div><div class="value red" id="stat0">₹0.00</div></div>
+        <div class="stat-card"><div class="label" id="label1">Total Income</div><div class="value green" id="stat1">₹0.00</div></div>
+        <div class="stat-card"><div class="label" id="label2">Total Balance</div><div class="value green" id="stat2">₹0.00</div></div>
+        <div class="stat-card"><div class="label" id="label3">Monthly Budget</div><div class="value blue" id="stat3">₹0.00</div></div>
+        <div class="stat-card"><div class="label" id="label4">Total Saving</div><div class="value green" id="stat4">₹0.00</div></div>
+        <div class="stat-card"><div class="label" id="label5">Unknown/Inward</div><div class="value gold" id="stat5">₹0.00</div></div>
+    </div>
+
+    <div id="loadingState" class="loading"><div class="spinner"></div><p>Loading data...</p></div>
+
+    <div id="contentWrapper" style="display:none;">
+        <!-- Dummy hidden navs to satisfy old JS -->
+        <nav class="main-nav" id="nav-expense" style="display:none;"></nav>
+        <nav class="main-nav" id="nav-business" style="display:none;"></nav>
+
+        <div class="tab-content active" id="tab-all-transactions"><div id="allTransactionsList"></div></div>
+        <div class="tab-content" id="tab-offline"><div id="transactionsList"></div></div>
+        <div class="tab-content" id="tab-online"><div id="onlineList"></div></div>
+        <div class="tab-content" id="tab-offerings"><div id="donationsList"></div></div>
+        <div class="tab-content" id="tab-receivables"><div id="receivablesList"></div></div>
+        <div class="tab-content" id="tab-lending"><div id="lendingList"></div></div>
+        <div class="tab-content" id="tab-savings"><div id="savingsList"></div></div>
+        <div class="tab-content" id="tab-unknown"><div id="unknownList"></div></div>
+        <div class="tab-content" id="tab-biz-all"><div id="bizAllList"></div></div>
+        <div class="tab-content" id="tab-stencil"><div id="stencilList"></div></div>
+        <div class="tab-content" id="tab-naturals"><div id="naturalsList"></div></div>
+        <div class="tab-content" id="tab-upcoming"><div id="upcomingList"></div></div>
+        <div class="tab-content" id="tab-global"><div id="globalList"></div></div>
+        <div class="tab-content" id="tab-heatmap">
+            <div class="heatmap-layout">
+                <section class="heatmap-panel">
+                    <div id="heatmapCalendar"></div>
+                </section>
+                <aside class="heatmap-summary">
+                    <h2 style="font-size:15px;">Spent From → To</h2>
+                    <div class="heatmap-summary-total" id="heatmapTotal">₹0.00</div>
+                    <div class="heatmap-summary-list" id="heatmapBreakdown"></div>
+                </aside>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div class="modal-overlay" id="modalTransaction">
+        <div class="modal">
+            <div class="modal-header"><h2>➕ upload Transaction</h2><button class="modal-close" onclick="closeModal('modalTransaction')">✕</button></div>
+            <form id="transactionForm" onsubmit="saveTransaction(event)">
+                <div class="form-row">
+                    <div class="form-group"><label>Type</label><select id="txType" required><option value="expense">Expense</option><option value="income">Income</option></select></div>
+                    <div class="form-group"><label>Date</label><input type="date" id="txDate" required /></div>
+                </div>
+                <div class="form-group"><label>Amount</label><input type="number" id="txAmount" placeholder="0.00" step="0.01" min="0.01" required /></div>
+                <div class="form-group"><label>Category</label><select id="txCategory" required></select></div>
+                <div class="form-group"><label>Purpose</label><input type="text" id="txPurpose" required /></div>
+                <div class="form-group"><label>Notes</label><textarea id="txNote" rows="2"></textarea></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Cash Given</label><input type="number" id="txCashGiven" step="0.01" /></div>
+                    <div class="form-group"><label>Balance</label><input type="number" id="txBalance" step="0.01" /></div>
+                </div>
+                <div class="form-group"><label>Spent From</label><select id="txSpentFrom"><option value="MOBILECASH">MobileCash</option><option value="C WALLET">C Wallet</option><option value="S WALLET">S Wallet</option><option value="ACCOUNT">Bank/UPI</option><option value="UNKNOWN">Unknown</option></select></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Exp Place</label><select id="txExpPlace"><option value="LOCAL">Local</option><option value="CHENNAI">Chennai</option><option value="SAVINGS">Savings</option><option value="MOBILE">Mobile</option><option value="ONLINE">Online</option><option value="UNKNOWN">Unknown</option></select></div>
+                    <div class="form-group"><label>Exp Type</label><select id="txExpType"></select></div>
+                </div>
+                <div class="form-group"><label>Sub Category</label><input type="text" id="txSubCat" /></div>
+                <div class="form-group"><label>Mode</label><select id="txMode"><option value="OFFLINE" selected>📴 Offline</option><option value="ONLINE">🌐 Online</option></select></div>
+                <button type="submit" class="btn-primary" id="txSubmitBtn">💾 Save Transaction</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOnline">
+        <div class="modal">
+            <div class="modal-header"><h2>🌐 Add Online</h2><button class="modal-close" onclick="closeModal('modalOnline')">✕</button></div>
+            <form id="onlineForm" onsubmit="saveOnlineTransaction(event)">
+                <div class="form-row">
+                    <div class="form-group"><label>Date</label><input type="date" id="onDate" required /></div>
+                    <div class="form-group"><label>Spent From</label><select id="onSpentFrom"><option value="SBI">SBI</option><option value="KVB">KVB</option><option value="UPI">UPI</option><option value="OTHER">Other</option></select></div>
+                </div>
+                <div class="form-group"><label>Exp Place</label><select id="onExpPlace"><option value="LOCAL">Local</option><option value="CHENNAI">Chennai</option><option value="SAVINGS">Savings</option><option value="MOBILE">Mobile</option><option value="ONLINE">Online</option><option value="UNKNOWN">Unknown</option></select></div>
+                <div class="form-group"><label>Purpose</label><input type="text" id="onPurpose" required /></div>
+                <div class="form-row">
+                    <div class="form-group"><label>DR (Income)</label><input type="number" id="onDR" step="0.01" /></div>
+                    <div class="form-group"><label>CR (Expense)</label><input type="number" id="onCR" step="0.01" /></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Exp Type</label><input type="text" id="onExpType" /></div>
+                    <div class="form-group"><label>Sub Cat</label><input type="text" id="onSubCat" /></div>
+                </div>
+                <div class="form-group"><label>Notes</label><textarea id="onNotes" rows="2"></textarea></div>
+                <button type="submit" class="btn-primary" id="onSubmitBtn">💾 Save Online</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalDonation">
+        <div class="modal">
+            <div class="modal-header"><h2> Add Donation</h2><button class="modal-close" onclick="closeModal('modalDonation')">✕</button></div>
+            <form id="donationForm" onsubmit="saveDonation(event)">
+                <div class="form-row">
+                    <div class="form-group"><label>Date</label><input type="date" id="donDate" required /></div>
+                    <div class="form-group"><label>Spent From</label>
+                        <select id="donSpentFrom">
+                            <option value="D WALLET">D WALLET</option>
+                            <option value="MOBILE CASH">MOBILE CASH</option>
+                            <option value="C WALLET">C WALLET</option>
+                            <option value="S WALLET">S WALLET</option>
+                            <option value="SBI">SBI</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Place</label><input type="text" id="donPlace" required /></div>
+                    <div class="form-group"><label>Type</label><select id="donType"><option value="DONATIONS">Donations</option><option value="OFFERING">Offering</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Cash Given</label><input type="number" id="donCash" required step="0.01" /></div>
+                    <div class="form-group"><label>Mode</label><select id="donMode"><option value="OFFLINE">📴 Offline</option><option value="ONLINE">🌐 Online</option></select></div>
+                </div>
+                <div class="form-group"><label>Person / Notes</label><input type="text" id="donPerson" /></div>
+                <button type="submit" class="btn-primary" id="donSubmitBtn">💾 Save Donation</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalReceivable">
+        <div class="modal">
+            <div class="modal-header"><h2>📥 Add Receivable</h2><button class="modal-close" onclick="closeModal('modalReceivable')">✕</button></div>
+            <form id="receivableForm" onsubmit="saveReceivable(event)">
+                <div class="form-group"><label>Date</label><input type="date" id="recDate" required /></div>
+                <div class="form-group"><label>Description</label><input type="text" id="recYet" required /></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Till Received</label><input type="number" id="recTill" step="0.01" /></div>
+                    <div class="form-group"><label>CR</label><input type="number" id="recCR" step="0.01" /></div>
+                </div>
+                <div class="form-group"><label>To Be Received</label><input type="number" id="recToBe" step="0.01" /></div>
+                <div class="form-group"><label>Notes</label><input type="text" id="recNotes" /></div>
+                <div class="form-group"><label>Receive In</label><select id="recReceiveIn"><option value="ACCOUNT">Bank Account</option><option value="MOBILECASH">MobileCash</option><option value="C WALLET">C Wallet</option><option value="S WALLET">S Wallet</option><option value="UNKNOWN">Unknown</option></select></div>
+                <button type="submit" class="btn-primary" id="recSubmitBtn">💾 Save Receivable</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalLending">
+        <div class="modal">
+            <div class="modal-header"><h2>🤝 Add Lending</h2><button class="modal-close" onclick="closeModal('modalLending')">✕</button></div>
+            <form id="lendingForm" onsubmit="saveLending(event)">
+                <div class="form-group"><label>Purpose</label><input type="text" id="lenPurpose" required /></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Date</label><input type="date" id="lenDate" required /></div>
+                    <div class="form-group"><label>Given Mode</label><select id="lenGivenMode"><option value="OFFLINE">Offline</option><option value="ONLINE">Online</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Given Date</label><input type="date" id="lenGivenDate" /></div>
+                    <div class="form-group"><label>Given From</label>
+                        <select id="lenGivenFrom">
+                            <option value="">-- None --</option>
+                            <option value="MOBILECASH">MobileCash</option>
+                            <option value="C WALLET">C Wallet</option>
+                            <option value="S WALLET">S Wallet</option>
+                            <option value="ACCOUNT">Bank Account</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>CR (Lent)</label><input type="number" id="lenCR" step="0.01" /></div>
+                    <div class="form-group"><label>Expected Date</label><input type="date" id="lenExpDate" /></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Received Mode</label><select id="lenRecMode"><option value="">-- None --</option><option value="ACCOUNT">Account</option><option value="OFFLINE">Offline</option></select></div>
+                    <div class="form-group"><label>Received In</label>
+                        <select id="lenReceivedIn">
+                            <option value="">-- None --</option>
+                            <option value="MOBILECASH">MobileCash</option>
+                            <option value="C WALLET">C Wallet</option>
+                            <option value="S WALLET">S Wallet</option>
+                            <option value="ACCOUNT">Bank Account</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Actual Date</label><input type="date" id="lenActDate" /></div>
+                    <div class="form-group"><label>DR (Received)</label><input type="number" id="lenDR" step="0.01" /></div>
+                </div>
+                <div class="form-group"><label>Notes</label><input type="text" id="lenNotes" /></div>
+                <button type="submit" class="btn-primary" id="lenSubmitBtn">💾 Save Lending</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalBusiness">
+        <div class="modal">
+            <div class="modal-header"><h2>🏭 Add Business Entry</h2><button class="modal-close" onclick="closeModal('modalBusiness')">✕</button></div>
+            <form id="businessForm" onsubmit="saveBusinessPurchase(event)">
+                <div class="form-row">
+                    <div class="form-group"><label>Project</label><select id="bizProject" required><option value="STENCIL">✂️ Stencil</option><option value="NATURALS">🌿 Naturals</option></select></div>
+                    <div class="form-group"><label>Date</label><input type="date" id="bizDate" required /></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Day Delays</label><input type="number" id="bizDayDelays" /></div>
+                    <div class="form-group"><label>Type</label><select id="bizType"><option value="PLAN">📌 PLAN</option><option value="RAW">RAW</option><option value="TRIAL">TRIAL</option><option value="UTILITY">UTILITY</option><option value="MNE">MNE</option><option value="PKG">PKG</option><option value="COMPETITOR">COMPETITOR</option></select></div>
+                </div>
+                <div class="form-group"><label>Particulars</label><input type="text" id="bizParticulars" /></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Materials</label><input type="text" id="bizMaterial" /></div>
+                    <div class="form-group"><label>Prod Desc</label><input type="text" id="bizProdDesc" /></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Qty</label><input type="number" id="bizQty" step="0.01" /></div>
+                    <div class="form-group"><label>Unit</label><input type="text" id="bizUnit" /></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Price/GM</label><input type="number" id="bizPrice" step="0.01" /></div>
+                    <div class="form-group"><label>Fin Nature</label><select id="bizFinNature"><option value="EXPENSE">Expense</option><option value="INCOME">Income</option><option value="INVESTMENT">Investment</option><option value="PROFIT">Profit</option><option value="NEUTRAL">Neutral</option></select></div>
+                </div>
+                <div class="form-group"><label>Spent Mode</label>
+                    <select id="bizSpentMode">
+                        <option value="OFFLINE">📴 Offline</option>
+                        <option value="ONLINE">🌐 Online</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Budget</label><input type="number" id="bizBudget" step="0.01" /></div>
+                    <div class="form-group"><label>Actual Cost</label><input type="number" id="bizActual" step="0.01" /></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Fav. Variance</label><input type="number" id="bizVariance" step="0.01" readonly style="opacity:0.7;" /></div>
+                    <div class="form-group"><label>Var %</label><input type="text" id="bizVariancePct" readonly style="opacity:0.7;" /></div>
+                </div>
+                <div class="form-group"><label>Profit Amount</label><input type="number" id="bizProfit" step="0.01" placeholder="0.00" /></div>
+                <div class="form-group"><label>Next Step</label><input type="text" id="bizNextStep" /></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Deadline</label><input type="date" id="bizDeadline" /></div>
+                    <div class="form-group"><label>Met?</label><select id="bizDeadlineMet"><option value="">--</option><option value="YES">YES</option><option value="NO">NO</option></select></div>
+                </div>
+                <div class="form-group"><label>Reason</label><input type="text" id="bizReason" /></div>
+                <div class="form-group"><label>Note</label><textarea id="bizNote" rows="2"></textarea></div>
+                <button type="submit" class="btn-primary" id="bizSubmitBtn">💾 Save Entry</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const CURRENCY = '₹';
+    const CONFIG = {
+        WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbxHdkJdaKWwWn3z4BYCG6fEdtLU8pF1CMoQR5SfdcYHK9yjw-eKM6jvXLp5uZwa7mU/exec',
+        SHEETS: { 
+            TRANSACTIONS: 'Transactions',
+            ONLINE_TRANS: 'Online_Trans',
+            DONATIONS: 'Donations',
+            RECEIVABLES: 'Receivables',
+            LENDING: 'Lending',
+            SAVINGS: 'Savings',
+            BUSINESS: 'Business_Inventory',
+            COSTING: 'Costing',
+            BUDGET: 'Budget_and_Opening'
+        }
+    };
+
+    let appData = { transactions: [], onlineTransactions: [], donations: [], receivables: [], lending: [], savings: [], categories: [], businessInventory: [], budgetData: [] };
+
+    function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+    function formatCurrency(n) { 
+        var num = Number(n) || 0; 
+        var isNegative = num < 0;
+        var absNum = Math.abs(num);
+        var formatted = absNum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return (isNegative ? '-' : '') + CURRENCY + formatted; 
+    }
+    function todayISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function parseDate(dateStr) { if (!dateStr) return null; var d = new Date(dateStr); return isNaN(d) ? null : d; }
+    function formatDate(dateStr) { var d = parseDate(dateStr); if (!d) return dateStr || 'No date'; var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']; return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear(); }
+    function getWeekNumber(dateStr) { var d = parseDate(dateStr); if (!d) return 0; var startOfMonth = new Date(d.getFullYear(), d.getMonth(), 1); return Math.ceil(((d - startOfMonth) / 86400000 + 1) / 7); }
+    function isSavings(tx) { return (tx.expType + '|' + tx.subCat + '|' + tx.subCat2).toUpperCase().indexOf('SAVINGS') !== -1; }
+    function isIncome(tx) { return (tx.expType + '|' + tx.subCat + '|' + tx.subCat2).toUpperCase().indexOf('INCOME') !== -1; }
+    function isUnknownCash(tx) { return tx.dr > 0 && !isSavings(tx) && !isIncome(tx) && tx.expType !== 'OPENING'; }
+
+    async function fetchSheetData(sheetName) {
+        try { var response = await fetch(CONFIG.WEB_APP_URL + '?sheet=' + encodeURIComponent(sheetName)); if (!response.ok) throw new Error('HTTP ' + response.status); var data = await response.json(); return data.values || []; } 
+        catch (error) { console.error('Error fetching ' + sheetName + ':', error); return []; }
+    }
+    async function writeToSheet(sheetName, action, payload) {
+        var body = Object.assign({ sheet: sheetName, action: action }, payload);
+        var response = await fetch(CONFIG.WEB_APP_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+        if (!response.ok) throw new Error('HTTP ' + response.status); var data = await response.json(); if (data.error) throw new Error(data.error); return data;
+    }
+    function prependToSheet(sheetName, rowData) { return writeToSheet(sheetName, 'prepend', { row: rowData }); }
+
+    async function loadAllData() {
+        var loading = document.getElementById('loadingState'); var wrapper = document.getElementById('contentWrapper');
+        loading.style.display = 'block'; wrapper.style.display = 'none';
+        try {
+            var sheets = await Promise.all([
+                fetchSheetData(CONFIG.SHEETS.TRANSACTIONS),
+                fetchSheetData(CONFIG.SHEETS.ONLINE_TRANS),
+                fetchSheetData(CONFIG.SHEETS.DONATIONS),
+                fetchSheetData(CONFIG.SHEETS.RECEIVABLES),
+                fetchSheetData(CONFIG.SHEETS.LENDING),
+                fetchSheetData(CONFIG.SHEETS.SAVINGS),
+                fetchSheetData(CONFIG.SHEETS.BUSINESS),
+                fetchSheetData(CONFIG.SHEETS.COSTING),
+                fetchSheetData(CONFIG.SHEETS.BUDGET)
+            ]);
+
+            appData.transactions = sheets[0].slice(1).filter(row => row[2] && row[2].toString().trim() !== '').map(function(row) { 
+                var rawDate = row[2];
+                var dateStr = rawDate instanceof Date ? rawDate.getFullYear() + '-' + String(rawDate.getMonth() + 1).padStart(2, '0') + '-' + String(rawDate.getDate()).padStart(2, '0') : rawDate.toString();
+                var rawTime = row[3] || '00:00:00';
+                var normalizedTime = rawTime.toString().trim().replace(/\./g, ':');
+                if (normalizedTime.split(':').length === 2) normalizedTime += ':00';
+                return { id: generateId(), slno: row[0]||'', month: row[1]||'', date: dateStr, time: normalizedTime, purpose: row[4]||'', dr: parseFloat(row[5])||0, cr: parseFloat(row[6])||0, cashGiven: parseFloat(row[7])||0, balance: parseFloat(row[8])||0, spentFrom: row[9]||'', expPlace: row[10]||'', expType: row[11]||'', subCat: row[12]||'', notes: row[13]||'', timestamp: row[14]||'', mode: row[15]||'OFFLINE', monthlyBudget: parseFloat(row[16])||0, actuals: parseFloat(row[17])||0, upto: parseFloat(row[18])||0, surplusSaved: parseFloat(row[19])||0 }; 
+            });
+
+            appData.onlineTransactions = sheets[1].slice(1).filter(row => row[2] && row[2].toString().trim() !== '').map(function(row) { 
+                var rawDate = row[2];
+                var dateStr = rawDate instanceof Date ? rawDate.getFullYear() + '-' + String(rawDate.getMonth() + 1).padStart(2, '0') + '-' + String(rawDate.getDate()).padStart(2, '0') : rawDate.toString();
+                var rawTime = row[3] || '00:00:00';
+                var normalizedTime = rawTime.toString().trim().replace(/\./g, ':');
+                if (normalizedTime.split(':').length === 2) normalizedTime += ':00';
+                return { id: generateId(), slno: row[0]||'', month: row[1]||'', date: dateStr, time: normalizedTime, purpose: row[4]||'', dr: parseFloat(row[5])||0, cr: parseFloat(row[6])||0, spentFrom: row[7]||'', expPlace: row[8]||'', expType: row[9]||'', subCat: row[10]||'', notes: row[11]||'', mode: row[12]||'ONLINE', monthlyBudget: parseFloat(row[13])||0, actuals: parseFloat(row[14])||0, upto: parseFloat(row[15])||0, surplusSaved: parseFloat(row[16])||0 }; 
+            });
+
+            appData.donations = sheets[2].slice(1).filter(row => row[2] && row[2].toString().trim() !== '').map(function(row) { 
+                var rawTime = row[3] || '00:00:00';
+                var normalizedTime = rawTime.toString().trim().replace(/\./g, ':');
+                if (normalizedTime.split(':').length === 2) normalizedTime += ':00';
+                return { id: generateId(), slno: row[0]||'', month: row[1]||'', date: row[2]||'', time: normalizedTime, place: row[4]||'', type: row[5]||'', spentFrom: row[6]||'', cashGiven: parseFloat(row[7])||0, person: row[8]||'', mode: row[9]||'OFFLINE' }; 
+            });
+
+            appData.receivables = sheets[3].slice(1).filter(row => row[2] && row[2].toString().trim() !== '').map(function(row) { 
+                var rawTime = row[3] || '00:00:00';
+                var normalizedTime = rawTime.toString().trim();
+                if (normalizedTime.split(':').length === 2) normalizedTime += ':00';
+                return { id: generateId(), slno: row[0]||'', month: row[1]||'', date: row[2]||'', time: normalizedTime, yetToReceive: row[4]||'', tillReceived: parseFloat(row[5])||0, cr: parseFloat(row[6])||0, toBeReceived: parseFloat(row[7])||0, notes: row[8]||'', receiveIn: row[9]||'ACCOUNT', purpose: row[4]||'RECEIVABLE' }; 
+            });
+
+            appData.lending = sheets[4].slice(1).filter(row => row[0] && row[0].toString().trim() !== '').map(function(row) { 
+                return { id: generateId(), date: row[0]||'', purpose: row[1]||'', givenMode: row[2]||'', givenFrom: row[3]||'', givenDate: row[4]||'', cr: parseFloat(row[5])||0, expectedDate: row[6]||'', receivedMode: row[7]||'', receivedIn: row[8]||'', actualReceivedDate: row[9]||'', dr: parseFloat(row[10])||0, delay: row[11]||'', notes: row[12]||'' }; 
+            });
+
+            appData.savings = sheets[5].slice(1).filter(row => row[0] && row[0].toString().trim() !== '').map(function(row) { 
+                var rawDate = row[0];
+                var dateStr = rawDate instanceof Date ? rawDate.getFullYear() + '-' + String(rawDate.getMonth() + 1).padStart(2, '0') + '-' + String(rawDate.getDate()).padStart(2, '0') : rawDate.toString().replace(/\./g, '-');
+                var rawTime = row[1] || '00:00:00';
+                var normalizedTime = rawTime.toString().trim().replace(/\./g, ':');
+                if (normalizedTime.split(':').length === 2) normalizedTime += ':00';
+                return { id: generateId(), date: dateStr, time: normalizedTime, purpose: row[2]||'', givenMode: row[3]||'', givenFrom: row[4]||'', givenDate: row[5]||'', cr: parseFloat(row[6])||0, expectedDate: row[7]||'', receivedMode: row[8]||'', receivedIn: row[9]||'', actualReceivedDate: row[10]||'', dr: parseFloat(row[11])||0, delay: row[12]||'', type: row[13]||'', savingAmount: parseFloat(row[14])||0, notes: row[15]||'' }; 
+            });
+
+            appData.businessInventory = sheets[6].slice(1).filter(row => row[1] && row[1].toString().trim() !== '').map(function(row) {
+                var rawDate = row[1];
+                var dateStr = rawDate instanceof Date ? rawDate.getFullYear() + '-' + String(rawDate.getMonth() + 1).padStart(2, '0') + '-' + String(rawDate.getDate()).padStart(2, '0') : rawDate.toString();
+                return { id: generateId(), project: row[0]||'', date: dateStr, dayDelays: row[2]||'', type: row[3]||'', particulars: row[4]||'', material: row[5]||'', productDesc: row[6]||'', qty: parseFloat(row[7])||0, unit: row[8]||'', pricePerUnit: parseFloat(row[9])||0, budget: parseFloat(row[10])||0, actualCost: parseFloat(row[11])||0, variance: parseFloat(row[12])||0, variancePct: row[13]||'', nextStep: row[14]||'', deadline: row[15]||'', deadlineMet: row[16]||'', reason: row[17]||'', note: row[18]||'', finNature: row[19]||'EXPENSE', profitAmount: parseFloat(row[20])||0, spentMode: (row[21] || 'OFFLINE').toString().toUpperCase() };
+            });
+
+            appData.budgetData = sheets[8] ? sheets[8].slice(1).filter(row => row[0] && row[0].toString().trim() !== '').map(function(row) {
+                var rawDate = row[0].toString().replace(/\./g, '-'); 
+                return { id: generateId(), date: rawDate, month: row[0]||'', wallet: row[1]||'', openingBalance: parseFloat(row[2])||0, expPlace: row[3]||'', expenseType: row[4]||'', monthlyBudget: parseFloat(row[5])||0, actuals: 0, upto: parseFloat(row[7])||0, surplusSaved: parseFloat(row[8])||0, mode: (row[9] || '').toString().toUpperCase(), notes: row[10]||'' };
+            }) : [];
+
+            calculateBudgetActuals();
+            injectOpeningBalances();
+
+            populateDropdowns(); 
+            populateMonthFilter(); 
+            populateExpPlaceFilter();
+            populateBusinessFilters();
+            updateDashboard('all-transactions');
+            
+            renderGlobalMaster(); 
+            renderAllTransactions(); 
+            renderBizAll();
+            renderWalletNav('all-transactions'); 
+
+            loading.style.display = 'none'; 
+            wrapper.style.display = 'block';
+        } catch (error) { 
+            console.error('Error loading data:', error); 
+            loading.innerHTML = 'Error: ' + error.message + ' <button onclick="loadAllData()" style="background:var(--gold);border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;margin-top:12px;">Retry</button>'; 
+        }
+    }
+
+    function injectOpeningBalances() {
+        appData.transactions = appData.transactions.filter(tx => tx.expType !== 'OPENING' || !tx.purpose.startsWith('OPENING BALANCE:'));
+        appData.onlineTransactions = appData.onlineTransactions.filter(tx => tx.expType !== 'OPENING' || !tx.purpose.startsWith('OPENING BALANCE:'));
+
+        appData.budgetData.forEach(function(budget) {
+            if (!budget.wallet || budget.openingBalance <= 0) return;
+            var isOnline = budget.mode && budget.mode.toString().includes('ONLINE');
+            var targetArray = isOnline ? appData.onlineTransactions : appData.transactions;
+            var rawDate = budget.date;
+            var entryDate = rawDate instanceof Date ? rawDate.getFullYear() + '-' + String(rawDate.getMonth() + 1).padStart(2, '0') + '-' + String(rawDate.getDate()).padStart(2, '0') : (rawDate || '2026-09-01').toString();
+            targetArray.push({ id: 'opening_' + budget.wallet + '_' + budget.expenseType, date: entryDate, time: '00:00:00', purpose: 'OPENING BALANCE: ' + budget.wallet, dr: budget.openingBalance, cr: 0, expPlace: budget.expPlace || 'LOCAL', expType: 'OPENING', subCat: 'BALANCE', notes: 'Auto-injected (' + budget.month + ') - ' + (budget.notes || ''), mode: isOnline ? 'ONLINE' : 'OFFLINE', spentFrom: budget.wallet });
+        });
+    }
+
+    function calculateBudgetActuals() {
+        appData.budgetData.forEach(function(budget) {
+            var actuals = 0;
+            appData.transactions.forEach(function(tx) { if (tx.spentFrom === budget.wallet && tx.expType === budget.expenseType) actuals += tx.cr; });
+            appData.onlineTransactions.forEach(function(tx) { if (tx.spentFrom === budget.wallet && tx.expType === budget.expenseType) actuals += tx.cr; });
+            budget.actuals = actuals;
+        });
+    }
+
+    function populateDropdowns() {
+        var categorySelect = document.getElementById('txCategory'); if (categorySelect) { categorySelect.innerHTML = ''; appData.categories.forEach(function(cat) { var opt = document.createElement('option'); opt.value = cat.id; opt.textContent = cat.name; categorySelect.appendChild(opt); }); }
+        var expTypeSelect = document.getElementById('txExpType'); var filterCategory = document.getElementById('filterCategory');
+        if (expTypeSelect || filterCategory) {
+            var uniqueCats = {}; appData.transactions.forEach(function(tx) { if (tx.expType && tx.expType.trim() !== '') uniqueCats[tx.expType.trim()] = true; }); appData.onlineTransactions.forEach(function(tx) { if (tx.expType && tx.expType.trim() !== '') uniqueCats[tx.expType.trim()] = true; });
+            var sortedCats = Object.keys(uniqueCats).sort();
+            if (expTypeSelect) { expTypeSelect.innerHTML = ''; sortedCats.forEach(function(cat) { var opt = document.createElement('option'); opt.value = cat; opt.textContent = cat; expTypeSelect.appendChild(opt); }); var unknownOpt = document.createElement('option'); unknownOpt.value = 'UNKNOWN'; unknownOpt.textContent = 'UNKNOWN'; expTypeSelect.appendChild(unknownOpt); }
+            if (filterCategory) { var currentVal = filterCategory.value; filterCategory.innerHTML = '<option value="all">All Categories</option>'; sortedCats.forEach(function(cat) { var opt = document.createElement('option'); opt.value = cat; opt.textContent = cat; filterCategory.appendChild(opt); }); filterCategory.value = currentVal || 'all'; }
+        }
+        var filterSubCat = document.getElementById('filterSubCat');
+        if (filterSubCat) {
+            var uniqueSubCats = {}; appData.transactions.forEach(function(tx) { if (tx.subCat && tx.subCat.trim() !== '') uniqueSubCats[tx.subCat.trim()] = true; }); appData.onlineTransactions.forEach(function(tx) { if (tx.subCat && tx.subCat.trim() !== '') uniqueSubCats[tx.subCat.trim()] = true; });
+            var sortedSubCats = Object.keys(uniqueSubCats).sort(); var currentSubCatVal = filterSubCat.value; filterSubCat.innerHTML = '<option value="all">All Sub Cats</option>'; sortedSubCats.forEach(function(sub) { var opt = document.createElement('option'); opt.value = sub; opt.textContent = sub; filterSubCat.appendChild(opt); }); filterSubCat.value = currentSubCatVal || 'all';
+        }
+        var dateInput = document.getElementById('txDate'); if (dateInput && !dateInput.value) dateInput.value = todayISO();
+    }
+
+    function populateMonthFilter() { 
+        var monthSelect = document.getElementById('filterMonth'); if (!monthSelect) return; 
+        var months = {}; appData.transactions.forEach(function(tx) { if (tx.month) months[tx.month] = true; }); 
+        monthSelect.innerHTML = '<option value="all">All Months</option>'; 
+        Object.keys(months).sort().forEach(function(m) { var opt = document.createElement('option'); opt.value = m; opt.textContent = m; monthSelect.appendChild(opt); }); 
+    }
+
+    function populateExpPlaceFilter() { 
+        var filterExpPlace = document.getElementById('filterExpPlace'); if (!filterExpPlace) return; 
+        var uniquePlaces = {}; 
+        appData.transactions.forEach(function(tx) { if (tx.expPlace && tx.expPlace.trim() !== '') uniquePlaces[tx.expPlace.trim()] = true; }); 
+        appData.onlineTransactions.forEach(function(tx) { if (tx.expPlace && tx.expPlace.trim() !== '') uniquePlaces[tx.expPlace.trim()] = true; }); 
+        var sortedPlaces = Object.keys(uniquePlaces).sort(); var currentVal = filterExpPlace.value; 
+        filterExpPlace.innerHTML = '<option value="all">All Places</option>'; 
+        sortedPlaces.forEach(function(place) { var opt = document.createElement('option'); opt.value = place; opt.textContent = place; filterExpPlace.appendChild(opt); }); 
+        filterExpPlace.value = currentVal || 'all'; 
+    }
+
+    function populateBusinessFilters() { 
+        var bizFilterType = document.getElementById('bizFilterType'); 
+        if (bizFilterType) { 
+            var uniqueTypes = {}; appData.businessInventory.forEach(function(biz) { if (biz.type && biz.type.trim() !== '') uniqueTypes[biz.type.trim()] = true; }); 
+            var sortedTypes = Object.keys(uniqueTypes).sort(); var currentVal = bizFilterType.value; 
+            bizFilterType.innerHTML = '<option value="all">All Types</option>'; 
+            sortedTypes.forEach(function(type) { var opt = document.createElement('option'); opt.value = type; opt.textContent = type; bizFilterType.appendChild(opt); }); 
+            bizFilterType.value = currentVal || 'all'; 
+        }
+
+        var bizFilterParticulars = document.getElementById('bizFilterParticulars'); 
+        if (bizFilterParticulars) { 
+            var uniqueParticulars = {}; appData.businessInventory.forEach(function(biz) { if (biz.particulars && biz.particulars.trim() !== '') uniqueParticulars[biz.particulars.trim()] = true; }); 
+            var sortedParticulars = Object.keys(uniqueParticulars).sort(); var currentVal = bizFilterParticulars.value; 
+            bizFilterParticulars.innerHTML = '<option value="all">All Particulars</option>'; 
+            sortedParticulars.forEach(function(part) { var opt = document.createElement('option'); opt.value = part; opt.textContent = part; bizFilterParticulars.appendChild(opt); }); 
+            bizFilterParticulars.value = currentVal || 'all'; 
+        }
+
+        var bizFilterMaterials = document.getElementById('bizFilterMaterials'); 
+        if (bizFilterMaterials) { 
+            var uniqueMaterials = {}; appData.businessInventory.forEach(function(biz) { if (biz.material && biz.material.trim() !== '') uniqueMaterials[biz.material.trim()] = true; }); 
+            var sortedMaterials = Object.keys(uniqueMaterials).sort(); var currentVal = bizFilterMaterials.value; 
+            bizFilterMaterials.innerHTML = '<option value="all">All Materials</option>'; 
+            sortedMaterials.forEach(function(mat) { var opt = document.createElement('option'); opt.value = mat; opt.textContent = mat; bizFilterMaterials.appendChild(opt); }); 
+            bizFilterMaterials.value = currentVal || 'all'; 
+        }
+
+        var bizFilterMonth = document.getElementById('bizFilterMonth');
+        if (bizFilterMonth) {
+            var months = {};
+            appData.businessInventory.forEach(function(biz) {
+                if (biz.date) {
+                    var d = new Date(biz.date);
+                    if (!isNaN(d)) {
+                        var monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+                        var monthKey = monthNames[d.getMonth()] + ' ' + d.getFullYear();
+                        months[monthKey] = true;
+                    }
+                }
+            });
+            var currentVal = bizFilterMonth.value;
+            bizFilterMonth.innerHTML = '<option value="all">All Months</option>';
+            Object.keys(months).sort().forEach(function(m) {
+                var opt = document.createElement('option'); opt.value = m; opt.textContent = m; bizFilterMonth.appendChild(opt);
+            });
+            bizFilterMonth.value = currentVal || 'all';
+        }
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    function showAddTransaction() { populateDropdowns(); document.getElementById('transactionForm').reset(); document.getElementById('txDate').value = todayISO(); openModal('modalTransaction'); }
+    function setBusy(btnId, busy, label) { var btn = document.getElementById(btnId); if (!btn) return; btn.disabled = busy; btn.textContent = busy ? 'Saving...' : label; }
+    function toggleNotes(id) { var el = document.getElementById(id); if (!el) return; el.classList.toggle('open'); }
+
+    async function saveTransaction(event) {
+        event.preventDefault();
+        try {
+            var date = document.getElementById('txDate').value; var type = document.getElementById('txType').value; var amount = parseFloat(document.getElementById('txAmount').value); var purpose = document.getElementById('txPurpose').value; var note = document.getElementById('txNote').value; var cashGiven = parseFloat(document.getElementById('txCashGiven').value) || 0; var balance = parseFloat(document.getElementById('txBalance').value) || 0; var spentFrom = document.getElementById('txSpentFrom').value; var expPlace = document.getElementById('txExpPlace').value || 'UNKNOWN'; var expType = document.getElementById('txExpType').value; var subCat = document.getElementById('txSubCat').value; var mode = document.getElementById('txMode').value || 'OFFLINE';
+            if (!date || !amount || amount <= 0) { alert('Please fill in date and a positive amount.'); return; }
+            var d = new Date(date); var monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']; var dr = type === 'income' ? amount : 0; var cr = type === 'expense' ? amount : 0;
+            var now = new Date(); var timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0'); var timestamp = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + timeStr;
+            var row = ['', monthNames[d.getMonth()], date, timeStr, purpose, dr, cr, cashGiven, balance, spentFrom, expPlace, expType, subCat, note, timestamp, 'OFFLINE', 0, 0, 0, 0];
+            setBusy('txSubmitBtn', true, 'Saving...'); await prependToSheet(CONFIG.SHEETS.TRANSACTIONS, row); closeModal('modalTransaction'); document.getElementById('transactionForm').reset(); await loadAllData();
+        } catch (error) { console.error("Save Error:", error); alert('Failed to save: ' + error.message); } finally { setBusy('txSubmitBtn', false, '💾 Save Transaction'); }
+    }
+
+    async function saveOnlineTransaction(event) { 
+        event.preventDefault(); var date = document.getElementById('onDate').value; 
+        var now = new Date(); var timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+        var row = ['', getMonthName(date), date, timeStr, document.getElementById('onPurpose').value, parseFloat(document.getElementById('onDR').value) || 0, parseFloat(document.getElementById('onCR').value) || 0, document.getElementById('onSpentFrom').value, document.getElementById('onExpPlace').value, document.getElementById('onExpType').value, document.getElementById('onSubCat').value, document.getElementById('onNotes').value, 'ONLINE', 0, 0, 0, 0];
+        await submitForm('modalOnline', 'onlineForm', 'onSubmitBtn', CONFIG.SHEETS.ONLINE_TRANS, row);
+    }
+
+    async function saveDonation(event) { 
+        event.preventDefault(); var date = document.getElementById('donDate').value; 
+        var now = new Date(); var timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+        var row = ['', getMonthName(date), date, timeStr, document.getElementById('donPlace').value, document.getElementById('donType').value, document.getElementById('donSpentFrom').value, parseFloat(document.getElementById('donCash').value) || 0, document.getElementById('donPerson').value, document.getElementById('donMode').value]; 
+        await submitForm('modalDonation', 'donationForm', 'donSubmitBtn', CONFIG.SHEETS.DONATIONS, row); 
+    }
+
+    async function saveReceivable(event) { 
+        event.preventDefault(); var date = document.getElementById('recDate').value; 
+        var now = new Date(); var timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+        var row = ['', getMonthName(date), date, timeStr, document.getElementById('recYet').value, parseFloat(document.getElementById('recTill').value) || 0, parseFloat(document.getElementById('recCR').value) || 0, parseFloat(document.getElementById('recToBe').value) || 0, document.getElementById('recNotes').value, document.getElementById('recReceiveIn').value]; 
+        await submitForm('modalReceivable', 'receivableForm', 'recSubmitBtn', CONFIG.SHEETS.RECEIVABLES, row); 
+    }
+
+    async function saveLending(event) { 
+        event.preventDefault(); var date = document.getElementById('lenDate').value; var expDate = document.getElementById('lenExpDate').value; var actDate = document.getElementById('lenActDate').value; var delayDays = ''; 
+        if (expDate && actDate) { var diffTime = new Date(actDate) - new Date(expDate); delayDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); } 
+        var row = [date, document.getElementById('lenPurpose').value, document.getElementById('lenGivenMode').value, document.getElementById('lenGivenFrom').value || '', document.getElementById('lenGivenDate').value || '', parseFloat(document.getElementById('lenCR').value) || 0, expDate || '', document.getElementById('lenRecMode').value || '', document.getElementById('lenReceivedIn').value || '', actDate || '', parseFloat(document.getElementById('lenDR').value) || 0, delayDays, document.getElementById('lenNotes').value]; 
+        await submitForm('modalLending', 'lendingForm', 'lenSubmitBtn', CONFIG.SHEETS.LENDING, row); 
+    }
+    
+    async function saveBusinessPurchase(event) {
+        event.preventDefault(); var date = document.getElementById('bizDate').value; var budget = parseFloat(document.getElementById('bizBudget').value) || 0; var actual = parseFloat(document.getElementById('bizActual').value) || 0;
+        var variance = budget - actual; var variancePct = budget > 0 ? ((variance / budget) * 100).toFixed(1) + '%' : '0%';
+        var row = [document.getElementById('bizProject').value, date, document.getElementById('bizDayDelays').value || '', document.getElementById('bizType').value, document.getElementById('bizParticulars').value, document.getElementById('bizMaterial').value, document.getElementById('bizProdDesc').value, parseFloat(document.getElementById('bizQty').value) || 0, document.getElementById('bizUnit').value, parseFloat(document.getElementById('bizPrice').value) || 0, budget, actual, variance, variancePct, document.getElementById('bizNextStep').value, document.getElementById('bizDeadline').value, document.getElementById('bizDeadlineMet').value, document.getElementById('bizReason').value, document.getElementById('bizNote').value, document.getElementById('bizFinNature').value, parseFloat(document.getElementById('bizProfit').value) || 0, document.getElementById('bizSpentMode').value];
+        await submitForm('modalBusiness', 'businessForm', 'bizSubmitBtn', CONFIG.SHEETS.BUSINESS, row);
+    }
+
+    async function submitForm(modalId, formId, btnId, sheetName, row) {
+        var btn = document.getElementById(btnId); btn.disabled = true; btn.textContent = 'Saving...';
+        try { await prependToSheet(sheetName, row); closeModal(modalId); document.getElementById(formId).reset(); await loadAllData(); } catch (error) { alert('Error: ' + error.message); } finally { btn.disabled = false; btn.textContent = '💾 Save'; }
+    }
+
+    function getMonthName(dateStr) { if (!dateStr) return ''; var months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']; return months[new Date(dateStr).getMonth()]; }
+
+    function applyFilters() {
+        var activeTab = document.querySelector('.tab-content.active')?.id.replace('tab-', '') || 'all-transactions';
+        var globalButton = document.getElementById('btn-global');
+        var isGlobal = activeTab === 'global' || (globalButton && globalButton.classList.contains('active'));
+        if (isGlobal) { renderGlobalMaster(); updateDashboard('global'); return; }
+        
+        if (activeTab === 'all-transactions') renderAllTransactions(); 
+        else if (activeTab === 'offline') renderTransactions(); 
+        else if (activeTab === 'online') renderOnlineTransactions(); 
+        else if (activeTab === 'offerings') renderDonations(); 
+        else if (activeTab === 'receivables') renderReceivables(); 
+        else if (activeTab === 'lending') renderLending(); 
+        else if (activeTab === 'savings') renderSavings(); 
+        else if (activeTab === 'unknown') renderUnknownCash(); 
+        else if (activeTab === 'biz-all') renderBizAll(); 
+        else if (activeTab === 'stencil') renderStencil(); 
+        else if (activeTab === 'naturals') renderNaturals();
+        
+        updateDashboard(activeTab);
+    }
+
+    function renderUnifiedList(containerId, transactions, options) {
+        var container = document.getElementById(containerId); 
+        if (!container) return;
+        
+        var filtered = transactions.slice();
+        if (options.filter) filtered = filtered.filter(options.filter);
+        
+        if (currentWalletFilter !== 'ALL') {
+            if (options.prefix === 'sav_') {
+                filtered = filtered.filter(t => t.givenFrom === currentWalletFilter || t.receivedIn === currentWalletFilter);
+            } else {
+                filtered = filtered.filter(t => t.spentFrom === currentWalletFilter);
+            }
+        }
+        
+        var filterType = document.getElementById('filterType')?.value || 'all';
+        var filterCategory = document.getElementById('filterCategory')?.value || 'all';
+        var filterSubCat = document.getElementById('filterSubCat')?.value || 'all';
+        var filterExpPlace = document.getElementById('filterExpPlace')?.value || 'all';
+        var filterMonth = document.getElementById('filterMonth')?.value || 'all';
+        var fromDate = document.getElementById('fromDate')?.value || '';
+        var toDate = document.getElementById('toDate')?.value || '';
+
+        if (filterType === 'income') filtered = filtered.filter(t => (options.getDR ? options.getDR(t) : t.dr) > 0);
+        if (filterType === 'expense') filtered = filtered.filter(t => (options.getCR ? options.getCR(t) : t.cr) > 0);
+        
+        if (filterCategory !== 'all') {
+            filtered = filtered.filter(t => {
+                return (t.expType && t.expType.trim() === filterCategory) || (t.subCat && t.subCat.trim() === filterCategory) || (t.type && t.type.trim() === filterCategory);
+            });
+        }
+        if (filterSubCat !== 'all') {
+            filtered = filtered.filter(t => {
+                return (t.subCat && t.subCat.trim() === filterSubCat) || (t.subCat2 && t.subCat2.trim() === filterSubCat);
+            });
+        }
+        if (filterExpPlace !== 'all') {
+            filtered = filtered.filter(t => t.expPlace && t.expPlace.trim() === filterExpPlace);
+        }
+        if (filterMonth !== 'all') filtered = filtered.filter(t => t.month === filterMonth);
+        if (fromDate) filtered = filtered.filter(t => t.date >= fromDate);
+        if (toDate) filtered = filtered.filter(t => t.date <= toDate);
+
+        if (filtered.length === 0) { 
+            container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;">No records found</p>'; 
+            return; 
+        }
+
+        var sorted = filtered.sort(function(a, b) {
+            var dateObjA = new Date(a.date || '1970-01-01'); var dateObjB = new Date(b.date || '1970-01-01');
+            var timeA = (a.time || '00:00:00').toString(); var timeB = (b.time || '00:00:00').toString();
+            if (timeA.split(':').length === 2) timeA += ':00'; if (timeB.split(':').length === 2) timeB += ':00';
+            var dateDiff = dateObjA - dateObjB; if (dateDiff !== 0) return dateDiff;
+            return timeA.localeCompare(timeB);
+        });
+        
+        var runningBalance = 0;
+        var txWithBalance = sorted.map(function(tx) {
+            var dr = options.getDR ? options.getDR(tx) : (tx.dr || 0); var cr = options.getCR ? options.getCR(tx) : (tx.cr || 0);
+            var amount = dr - cr; var opening = runningBalance; runningBalance += amount;
+            return { tx: tx, opening: opening, closing: runningBalance, dr: dr, cr: cr };
+        });
+
+        var displayData = txWithBalance.slice().reverse();
+        var grouped = {};
+        
+        displayData.forEach(function(item) {
+            var tx = item.tx; var dateStr = tx.date || '1970-01-01'; var dateObj = new Date(dateStr);
+            var normalizedDate = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
+            var dayKey = normalizedDate;
+            var monthKey = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0');
+            var monthName = dateObj.toLocaleString('default', { month: 'long' }) + ' ' + dateObj.getFullYear();
+            var weekKey = monthKey + '-W' + getWeekNumber(normalizedDate);
+
+            if (!grouped[monthKey]) grouped[monthKey] = { name: monthName, weeks: {} };
+            if (!grouped[monthKey].weeks[weekKey]) grouped[monthKey].weeks[weekKey] = { number: getWeekNumber(normalizedDate), days: {} };
+            if (!grouped[monthKey].weeks[weekKey].days[dayKey]) grouped[monthKey].weeks[weekKey].days[dayKey] = [];
+            grouped[monthKey].weeks[weekKey].days[dayKey].push(item);
+        });
+
+        var html = '';
+        var monthNamesArr = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        function getShortDate(dateStr) { var d = new Date(dateStr); return d.getDate() + ' ' + monthNamesArr[d.getMonth()]; }
+
+        Object.keys(grouped).sort().reverse().forEach(function(monthKey) {
+            var monthData = grouped[monthKey]; var weekKeys = Object.keys(monthData.weeks).sort().reverse();
+            var mDR = 0, mCR = 0;
+            weekKeys.forEach(function(wk) { Object.keys(monthData.weeks[wk].days).forEach(function(dk) { monthData.weeks[wk].days[dk].forEach(function(item) { mDR += item.dr; mCR += item.cr; }); }); });
+            var monthNet = mDR - mCR;
+
+            var mYear = parseInt(monthKey.split('-')[0]); var mMonthIdx = parseInt(monthKey.split('-')[1]) - 1; var mBudget = 0;
+            var showBudget = options.showBudget !== false;
+            var isStrictlyOnline = (options.prefix === 'on_');
+            var isStrictlyOffline = (options.prefix === 'off_' || options.prefix === 'sav_' || options.prefix === 'unk_');
+            
+            if (showBudget) {
+                if (options.isDonations === true) {
+                    var donationWallets = {};
+                    filtered.forEach(function(t) { if (t.spentFrom && t.spentFrom.trim() !== '') donationWallets[t.spentFrom.toUpperCase().trim()] = true; });
+                    if (appData.budgetData) {
+                        appData.budgetData.forEach(function(b) {
+                            var bDate = new Date(b.date);
+                            if (!isNaN(bDate) && bDate.getMonth() === mMonthIdx && bDate.getFullYear() === mYear) {
+                                var wallet = (b.wallet || '').toString().toUpperCase().trim();
+                                if (donationWallets[wallet]) mBudget += (parseFloat(b.monthlyBudget) || 0);
+                            }
+                        });
+                    }
+                } else {
+                    if (appData.budgetData) {
+                        appData.budgetData.forEach(function(b) { 
+                            var bDate = new Date(b.date);
+                            if (!isNaN(bDate) && bDate.getMonth() === mMonthIdx && bDate.getFullYear() === mYear) {
+                                var walletMatch = (currentWalletFilter === 'ALL' || b.wallet === currentWalletFilter);
+                                var modeMatch = true; var placeMatch = (filterExpPlace === 'all' || b.expPlace === filterExpPlace);
+                                if (isStrictlyOnline) modeMatch = b.mode && b.mode.includes('ONLINE'); else if (isStrictlyOffline) modeMatch = b.mode && b.mode.includes('OFFLINE');
+                                if (walletMatch && modeMatch && placeMatch) mBudget += (b.monthlyBudget || 0); 
+                            }
+                        });
+                    }
+                }
+            }
+        
+            var mActual = mCR; var mVar = mBudget - mActual; var mVarPct = mBudget > 0 ? ((mVar / mBudget) * 100).toFixed(1) + '%' : '0%';
+            var mProgress = mBudget > 0 ? Math.min((mActual / mBudget) * 100, 100) : 0; var mColor = mActual > mBudget ? 'var(--red)' : 'var(--green)';
+            var mStartStr = '1 ' + monthNamesArr[mMonthIdx]; var mEndStr = new Date(mYear, mMonthIdx + 1, 0).getDate() + ' ' + monthNamesArr[mMonthIdx];
+
+            html += '<div class="month-container">';
+            html += '<div class="month-total" style="margin-top:0; margin-bottom:12px; flex-direction: column; align-items: flex-start; gap: 4px;">';
+            html += '<div style="font-weight: 700; font-size: 13px;">Month Total ' + mStartStr + ' - ' + mEndStr + '</div>';
+            
+            if (showBudget) {
+                html += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; font-weight:500;">';
+                html += '<span>DR: <span style="color: var(--green);">' + formatCurrency(mDR) + '</span> | CR: <span style="color: var(--red);">' + formatCurrency(mCR) + '</span></span>';
+                html += '<span>Budget (B): <span style="color: var(--blue);">' + formatCurrency(mBudget) + '</span> | Actual (A): <span style="color: var(--red);">' + formatCurrency(mActual) + '</span></span>';
+                html += '</div>';
+                html += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px;">';
+                html += '<span>Net: <span style="color:' + (monthNet >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (monthNet >= 0 ? '+' : '') + formatCurrency(monthNet) + '</span></span>';
+                html += '<span style="color:' + mColor + ';">Var (FA): ' + formatCurrency(mVar) + ' | Var% (VP): ' + mVarPct + '</span>';
+                html += '</div>';
+                if (mBudget > 0) html += '<div class="biz-progress-bg" style="margin-top:4px;"><div class="biz-progress-fill" style="width: ' + mProgress + '%; background: ' + mColor + ';"></div></div>';
+            } else {
+                html += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; font-weight:500;">';
+                html += '<span>DR: <span style="color: var(--green);">' + formatCurrency(mDR) + '</span> | CR: <span style="color: var(--red);">' + formatCurrency(mCR) + '</span></span>';
+                html += '</div>';
+                html += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px;">';
+                html += '<span>Net: <span style="color:' + (monthNet >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (monthNet >= 0 ? '+' : '') + formatCurrency(monthNet) + '</span></span>';
+                html += '</div>';
+            }
+            html += '</div>';
+
+            weekKeys.forEach(function(weekKey) {
+                var weekData = monthData.weeks[weekKey]; var dayKeys = Object.keys(weekData.days).sort().reverse();
+                var wDR = 0, wCR = 0; var wBudget = 0;
+                dayKeys.forEach(function(dk) { weekData.days[dk].forEach(function(item) { wDR += item.dr; wCR += item.cr; }); });
+                var weekNet = wDR - wCR;
+
+                if (showBudget) {
+                    if (options.isDonations === true) {
+                        var donationWallets = {};
+                        filtered.forEach(function(t) { if (t.spentFrom && t.spentFrom.trim() !== '') donationWallets[t.spentFrom.toUpperCase().trim()] = true; });
+                        if (appData.budgetData) {
+                            appData.budgetData.forEach(function(b) {
+                                var bDate = new Date(b.date);
+                                if (!isNaN(bDate) && bDate.getMonth() === mMonthIdx && bDate.getFullYear() === mYear) {
+                                    var wallet = (b.wallet || '').toString().toUpperCase().trim();
+                                    if (donationWallets[wallet]) wBudget += (parseFloat(b.monthlyBudget) || 0) / 4;
+                                }
+                            });
+                        }
+                    } else {
+                        if (appData.budgetData) {
+                            appData.budgetData.forEach(function(b) {
+                                var bDate = new Date(b.date);
+                                if (!isNaN(bDate) && bDate.getMonth() === mMonthIdx && bDate.getFullYear() === mYear) {
+                                    var walletMatch = (currentWalletFilter === 'ALL' || b.wallet === currentWalletFilter);
+                                    var modeMatch = true; var placeMatch = (filterExpPlace === 'all' || b.expPlace === filterExpPlace);
+                                    if (isStrictlyOnline) modeMatch = b.mode && b.mode.toString().includes('ONLINE'); else if (isStrictlyOffline) modeMatch = !b.mode || !b.mode.toString().includes('ONLINE');
+                                    if (walletMatch && modeMatch && placeMatch) wBudget += (parseFloat(b.monthlyBudget) || 0) / 4;
+                                }
+                            });
+                        }
+                    }
+                }
+
+                var wActual = wCR; var wVar = wBudget - wActual; var wVarPct = wBudget > 0 ? ((wVar / wBudget) * 100).toFixed(1) + '%' : '0%';
+                var wProgress = wBudget > 0 ? Math.min((wActual / wBudget) * 100, 100) : 0; var wColor = wActual > wBudget ? 'var(--red)' : 'var(--green)';
+                var wEndStr = getShortDate(dayKeys[0]); var wStartStr = getShortDate(dayKeys[dayKeys.length - 1]);
+
+                html += '<div class="week-total" style="margin-top:12px; flex-direction: column; align-items: flex-start; gap: 4px;">';
+                html += '<div style="font-weight: 700; font-size: 12px;">📊 Week Total ' + wStartStr + ' - ' + wEndStr + '</div>';
+                
+                if (showBudget) {
+                    html += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; font-weight:500;">';
+                    html += '<span>DR: <span style="color: var(--green);">' + formatCurrency(wDR) + '</span> | CR: <span style="color: var(--red);">' + formatCurrency(wCR) + '</span></span>';
+                    html += '<span>Budget (B): <span style="color: var(--blue);">' + formatCurrency(wBudget) + '</span> | Actual (A): <span style="color: var(--red);">' + formatCurrency(wActual) + '</span></span>';
+                    html += '</div>';
+                    html += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px;">';
+                    html += '<span>Net: <span style="color:' + (weekNet >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (weekNet >= 0 ? '+' : '') + formatCurrency(weekNet) + '</span></span>';
+                    html += '<span style="color:' + wColor + ';">Var (FA): ' + formatCurrency(wVar) + ' | Var% (VP): ' + wVarPct + '</span>';
+                    html += '</div>';
+                    if (wBudget > 0) html += '<div class="biz-progress-bg" style="margin-top:4px;"><div class="biz-progress-fill" style="width: ' + wProgress + '%; background: ' + wColor + ';"></div></div>';
+                } else {
+                    html += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; font-weight:500;">';
+                    html += '<span>DR: <span style="color: var(--green);">' + formatCurrency(wDR) + '</span> | CR: <span style="color: var(--red);">' + formatCurrency(wCR) + '</span></span>';
+                    html += '</div>';
+                    html += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px;">';
+                    html += '<span>Net: <span style="color:' + (weekNet >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (weekNet >= 0 ? '+' : '') + formatCurrency(weekNet) + '</span></span>';
+                    html += '</div>';
+                }
+                html += '</div>';
+
+                dayKeys.forEach(function(dayKey) {
+                    var dayItems = weekData.days[dayKey];
+                    var dDR = 0, dCR = 0;
+                    dayItems.forEach(function(item) { dDR += item.dr; dCR += item.cr; });
+                    var dayNet = dDR - dCR;
+                    var firstChronological = dayItems[dayItems.length - 1];
+                    var opening = (firstChronological.tx.expType === 'OPENING' || firstChronological.tx.type === 'SAVINGS') ? firstChronological.closing : firstChronological.opening;
+                    var closing = dayItems[0].closing;
+
+                    html += '<div class="day-card">';
+                    html += '<div class="day-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">';
+                    html += '<span style="font-weight: 600; color: var(--text-primary); font-size: 12px;">' + formatDate(dayKey) + '</span>';
+                    html += '<div style="display: flex; gap: 12px; font-size: 11px; align-items: center;">';
+                    html += '<span>Inward: <span style="color: var(--green); font-weight: 600;">' + formatCurrency(dDR) + '</span></span>';
+                    html += '<span>Outward: <span style="color: var(--red); font-weight: 600;">' + formatCurrency(dCR) + '</span></span>';
+                    html += '<span>🔺 Closing: <span class="closing">' + formatCurrency(closing) + '</span></span>';
+                    html += '</div></div>';
+
+                    dayItems.forEach(function(item) {
+                        var tx = item.tx;
+                        var amount = item.dr > 0 ? item.dr : item.cr;
+                        var sign = item.dr > 0 ? '+' : '-';
+                        var colorClass = item.dr > 0 ? 'positive' : 'negative';
+                        var txId = options.prefix + tx.id;
+                        var catDisplay = options.getCat ? options.getCat(tx) : 'Unknown';
+                        var sourceDisplay = options.getSource ? options.getSource(tx) : '';
+
+                        html += '<div class="tx-item" onclick="toggleNotes(\'' + txId + '\')">';
+                        html += '<div class="tx-left"><div class="tx-desc">' + (tx.purpose || tx.place || 'No description') + '</div>';
+                        if (catDisplay) html += '<div class="tx-source">' + catDisplay + '</div>';
+                        if (sourceDisplay) html += '<div class="tx-source" style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + sourceDisplay + '</div>';
+                        html += '</div>';
+                        html += '<div class="tx-right ' + colorClass + '">' + sign + formatCurrency(amount) + ' <span class="expand-icon">▼</span></div>';
+                        html += '</div>';
+
+                        var notesContent = tx.notes || tx.person || 'No additional notes';
+                        if (tx.subCat2) notesContent += '<br><span style="font-size:11px;color:var(--text-muted);">Sub Cat 2: ' + tx.subCat2 + '</span>';
+                        html += '<div id="' + txId + '" class="tx-notes"><div class="label"> Notes</div>' + notesContent + '</div>';
+                    });
+
+                    html += '<div class="day-footer"><span>🔻 Opening: ' + formatCurrency(opening) + '</span><span>Net: <span style="color:' + (dayNet >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (dayNet >= 0 ? '+' : '') + formatCurrency(dayNet) + '</span></span></div>';
+                    html += '</div>';
+                });
+            });
+            html += '</div>';
+        });
+
+        container.innerHTML = html;
+    }
+
+    function renderTransactions() { renderUnifiedList('transactionsList', appData.transactions, { prefix: 'off_', filter: function(t) { return !isSavings(t) && !isUnknownCash(t); }, getCat: function(t) { return (t.expPlace||'') + (t.expType?' · '+t.expType:'') + (t.subCat?' · '+t.subCat:''); }, getSource: function(t) { return '📂 ' + (t.spentFrom||'') + (t.mode?' | '+t.mode:''); } }); }
+    function renderOnlineTransactions() { renderUnifiedList('onlineList', appData.onlineTransactions, { prefix: 'on_', filter: function(t) { return !isSavings(t); }, getCat: function(t) { return (t.expType||'') + (t.subCat?' · '+t.subCat:''); }, getSource: function(t) { return '📂 ' + (t.spentFrom||'ONLINE') + ' | ONLINE'; } }); }
+    
+    function renderSavings() { 
+        renderUnifiedList('savingsList', appData.savings, { 
+            prefix: 'sav_', showBudget: false, filter: function(t) { return true; }, 
+            getDR: function(t) { return t.dr || 0; }, getCR: function(t) { return t.cr || 0; }, 
+            getCat: function(t) { return (t.type || 'SAVINGS') + (t.givenFrom ? ' · ' + t.givenFrom : '') + (t.receivedIn ? ' → ' + t.receivedIn : ''); }, 
+            getSource: function(t) { return '💰 ' + (t.purpose || 'SAVINGS') + (t.notes ? ' | ' + t.notes : ''); } 
+        }); 
+    }
+    function renderUnknownCash() { 
+        renderUnifiedList('unknownList', appData.transactions, { 
+            prefix: 'unk_', showBudget: false, filter: function(t) { return isUnknownCash(t); }, 
+            getCat: function(t) { return (t.expPlace||'') + (t.expType?' · '+t.expType:'') + (t.subCat?' · '+t.subCat:''); }, 
+            getSource: function(t) { return '📂 ' + (t.spentFrom||'') + (t.mode?' | '+t.mode:''); } 
+        }); 
+    }
+    function renderDonations() { 
+        var combinedDonations = appData.donations.slice();
+        var donationWallets = {};
+        appData.donations.forEach(function(t) { if (t.spentFrom && t.spentFrom.toString().trim() !== '') donationWallets[t.spentFrom.toString().toUpperCase().trim()] = true; });
+        appData.transactions.forEach(function(tx) {
+            if (tx.expType === 'OPENING' && tx.purpose && tx.purpose.startsWith('OPENING BALANCE:')) {
+                var wallet = (tx.spentFrom || '').toString().toUpperCase().trim();
+                if (donationWallets[wallet]) combinedDonations.push({ id: tx.id, date: tx.date, time: tx.time || '00:00:00', place: 'Opening Balance', type: 'OPENING', spentFrom: tx.spentFrom, cashGiven: 0, person: tx.notes || '', mode: tx.mode || 'OFFLINE', dr: tx.dr || 0, cr: 0 });
+            }
+        });
+        renderUnifiedList('donationsList', combinedDonations, { 
+            prefix: 'don_', showBudget: true, isDonations: true, 
+            getDR: function(t) { return t.dr || 0; }, getCR: function(t) { return t.cashGiven || t.cr || 0; }, 
+            getCat: function(t) { return t.type === 'OPENING' ? 'OPENING · ' + (t.spentFrom || '') : (t.type || 'DONATION') + (t.spentFrom ? ' · ' + t.spentFrom : ''); }, 
+            getSource: function(t) { return t.type === 'OPENING' ? '💰 Opening Balance' : '📍 ' + (t.place || ''); } 
+        }); 
+    }
+    function renderReceivables() { 
+        renderUnifiedList('receivablesList', appData.receivables, { 
+            prefix: 'rec_', showBudget: false, 
+            getDR: function(t) { return t.tillReceived || 0; }, getCR: function(t) { return t.toBeReceived || 0; }, 
+            getCat: function(t) { return t.yetToReceive || 'RECEIVABLE'; }, 
+            getSource: function(t) { return '💳 ' + (t.receiveIn || 'ACCOUNT'); } 
+        }); 
+    }
+    function renderLending() { 
+        renderUnifiedList('lendingList', appData.lending, { 
+            prefix: 'len_', showBudget: false, 
+            getDR: function(t) { return t.dr || 0; }, getCR: function(t) { return t.cr || 0; }, 
+            getCat: function(t) { return t.purpose || 'LENDING'; }, 
+            getSource: function(t) { return '👤 ' + (t.person || 'Unknown'); } 
+        }); 
+    }
+    
+    function renderAllTransactions() { 
+        var allTx = []; 
+        appData.transactions.forEach(function(tx) { allTx.push(Object.assign({}, tx, {mode: 'OFFLINE'})); }); 
+        appData.onlineTransactions.forEach(function(tx) { allTx.push(Object.assign({}, tx, {mode: 'ONLINE'})); }); 
+        if (currentWalletFilter !== 'ALL') {
+            appData.donations.forEach(function(d) {
+                if (d.spentFrom === currentWalletFilter) {
+                    allTx.push({ id: d.id, date: d.date, time: d.time || '00:00:00', purpose: d.place || d.person || 'Donation', dr: 0, cr: d.cashGiven || 0, spentFrom: d.spentFrom, expPlace: 'DONATION', expType: d.type || 'DONATION', subCat: '', notes: d.person || '', mode: d.mode || 'OFFLINE', month: d.month || '' });
+                }
+            });
+        }
+        renderUnifiedList('allTransactionsList', allTx, { 
+            prefix: 'all_', filter: function(t) { return true; }, 
+            getCat: function(t) { return (t.expPlace||'') + (t.expType?' · '+t.expType:'') + (t.subCat?' · '+t.subCat:''); }, 
+            getSource: function(t) { return '📂 ' + (t.spentFrom||'UNKNOWN') + (t.mode ? ' | ' + t.mode : ''); } 
+        }); 
+    }
+
+    function renderBusinessList(containerId, data, projectFilter) {
+        var container = document.getElementById(containerId); if (!container) return;
+        var filtered = data.slice();
+        var bizFilterType = document.getElementById('bizFilterType')?.value || 'all';
+        var bizFilterParticulars = document.getElementById('bizFilterParticulars')?.value || 'all';
+        var bizFilterMaterials = document.getElementById('bizFilterMaterials')?.value || 'all';
+        var bizFilterMonth = document.getElementById('bizFilterMonth')?.value || 'all';
+        var bizFromDate = document.getElementById('bizFromDate')?.value || '';
+        var bizToDate = document.getElementById('bizToDate')?.value || '';
+
+        if (bizFilterType !== 'all') filtered = filtered.filter(t => t.type && t.type.toUpperCase() === bizFilterType.toUpperCase());
+        if (bizFilterParticulars !== 'all') filtered = filtered.filter(t => t.particulars && t.particulars.trim() === bizFilterParticulars);
+        if (bizFilterMaterials !== 'all') filtered = filtered.filter(t => t.material && t.material.trim() === bizFilterMaterials);
+        if (bizFilterMonth !== 'all') {
+            filtered = filtered.filter(function(t) {
+                if (!t.date) return false; var d = new Date(t.date); if (isNaN(d)) return false;
+                var monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+                return (monthNames[d.getMonth()] + ' ' + d.getFullYear()) === bizFilterMonth;
+            });
+        }
+        if (bizFromDate) filtered = filtered.filter(t => t.date >= bizFromDate);
+        if (bizToDate) filtered = filtered.filter(t => t.date <= bizToDate);
+        
+        if (projectFilter === 'UPCOMING') { 
+            var today = new Date(); today.setHours(0, 0, 0, 0);
+            filtered = filtered.filter(function(t) {
+                if (t.type && t.type.toUpperCase() === 'PLAN') return true;
+                if (t.deadline && t.deadline.toString().trim() !== '') {
+                    var deadlineStr = t.deadline.toString().trim(); var deadlineDate = null;
+                    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(deadlineStr)) deadlineDate = new Date(deadlineStr);
+                    else if (/^\d{4}\.\d{1,2}\.\d{1,2}$/.test(deadlineStr)) { var parts = deadlineStr.split('.'); deadlineDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])); }
+                    else if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(deadlineStr)) { var parts = deadlineStr.split('.'); deadlineDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])); }
+                    else if (/^\d{1,2}\.\d{1,2}\.\d{2}$/.test(deadlineStr)) { var parts = deadlineStr.split('.'); deadlineDate = new Date(parseInt(parts[2]) + 2000, parseInt(parts[1]) - 1, parseInt(parts[0])); }
+                    else deadlineDate = new Date(deadlineStr);
+                    if (deadlineDate && !isNaN(deadlineDate)) { deadlineDate.setHours(0, 0, 0, 0); return deadlineDate >= today; }
+                }
+                return false;
+            });
+        } 
+        else if (projectFilter !== 'ALL') filtered = filtered.filter(t => t.project && t.project.toUpperCase() === projectFilter.toUpperCase()); 
+        
+        if (filtered.length === 0) { container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;">No business records found</p>'; return; }
+        
+        var sorted = filtered.slice().sort((a, b) => new Date(b.date || '1970-01-01') - new Date(a.date || '1970-01-01'));
+        var grouped = {};
+        sorted.forEach(function(item) { 
+            var dateStr = item.date || '1970-01-01'; var dateObj = new Date(dateStr); 
+            var monthKey = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0'); 
+            var monthName = dateObj.toLocaleString('default', { month: 'long' }) + ' ' + dateObj.getFullYear(); 
+            var weekKey = monthKey + '-W' + getWeekNumber(dateStr); var dayKey = dateStr; 
+            if (!grouped[monthKey]) grouped[monthKey] = { name: monthName, weeks: {} }; 
+            if (!grouped[monthKey].weeks[weekKey]) grouped[monthKey].weeks[weekKey] = { number: getWeekNumber(dateStr), days: {} }; 
+            if (!grouped[monthKey].weeks[weekKey].days[dayKey]) grouped[monthKey].weeks[weekKey].days[dayKey] = []; 
+            grouped[monthKey].weeks[weekKey].days[dayKey].push(item); 
+        });
+        
+        function getShortDate(dateStr) { var d = new Date(dateStr); var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']; return d.getDate() + ' ' + months[d.getMonth()]; }
+        
+        var html = '';
+        Object.keys(grouped).sort().reverse().forEach(function(monthKey) {
+            var monthData = grouped[monthKey]; var weekKeys = Object.keys(monthData.weeks).sort().reverse(); var mBudget = 0, mActual = 0;
+            weekKeys.forEach(function(wk) { Object.keys(monthData.weeks[wk].days).forEach(function(dk) { monthData.weeks[wk].days[dk].forEach(function(item) { mBudget += item.budget; mActual += item.actualCost; }); }); });
+            var mVariance = mBudget - mActual; var mVarPct = mBudget > 0 ? ((mVariance / mBudget) * 100).toFixed(1) + '%' : '0%';
+            var mProgress = mBudget > 0 ? Math.min((mActual / mBudget) * 100, 100) : 0; var mColor = mActual > mBudget ? 'var(--red)' : 'var(--green)';
+            var mYear = parseInt(monthKey.split('-')[0]); var mMonthIdx = parseInt(monthKey.split('-')[1]) - 1; var monthNamesArr = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']; var mStartStr = '1 ' + monthNamesArr[mMonthIdx]; var mEndStr = new Date(mYear, mMonthIdx + 1, 0).getDate() + ' ' + monthNamesArr[mMonthIdx];
+            
+            html += '<div class="month-container">';
+            html += '<div class="month-total" style="margin-top:0; margin-bottom:12px; flex-direction: column; align-items: flex-start; gap: 4px;">';
+            html += '<div style="font-weight: 700; font-size: 13px;">Month Total ' + mStartStr + ' - ' + mEndStr + '</div>';
+            html += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; font-weight:500;">';
+            html += '<span>Budget: <span style="color: var(--blue);">' + formatCurrency(mBudget) + '</span> | Actual: <span style="color: var(--red);">' + formatCurrency(mActual) + '</span></span>';
+            html += '<span style="color:' + mColor + ';">Var: ' + formatCurrency(mVariance) + ' (' + mVarPct + ')</span>';
+            html += '</div>';
+            if (mBudget > 0) html += '<div class="biz-progress-bg" style="margin-top:4px; width:100%;"><div class="biz-progress-fill" style="width: ' + mProgress + '%; background: ' + mColor + ';"></div></div>';
+            html += '</div>';
+            
+            weekKeys.forEach(function(weekKey) {
+                var weekData = monthData.weeks[weekKey]; var dayKeys = Object.keys(weekData.days).sort().reverse(); var wBudget = 0, wActual = 0;
+                dayKeys.forEach(function(dk) { weekData.days[dk].forEach(function(item) { wBudget += item.budget; wActual += item.actualCost; }); }); 
+                var wVariance = wBudget - wActual; var wVarPct = wBudget > 0 ? ((wVariance / wBudget) * 100).toFixed(1) + '%' : '0%';
+                var wProgress = wBudget > 0 ? Math.min((wActual / wBudget) * 100, 100) : 0; var wColor = wActual > wBudget ? 'var(--red)' : 'var(--green)';
+                var wStartStr = getShortDate(dayKeys[dayKeys.length - 1]); var wEndStr = getShortDate(dayKeys[0]);
+                
+                html += '<div class="week-total" style="margin-top:12px; flex-direction: column; align-items: flex-start; gap: 4px;">';
+                html += '<div style="font-weight: 700; font-size: 12px;">📊 Week Total ' + wStartStr + ' - ' + wEndStr + '</div>';
+                html += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; font-weight:500;">';
+                html += '<span>Budget: <span style="color: var(--blue);">' + formatCurrency(wBudget) + '</span> | Actual: <span style="color: var(--red);">' + formatCurrency(wActual) + '</span></span>';
+                html += '<span style="color:' + wColor + ';">Var: ' + formatCurrency(wVariance) + ' (' + wVarPct + ')</span>';
+                html += '</div>';
+                if (wBudget > 0) html += '<div class="biz-progress-bg" style="margin-top:4px; width:100%;"><div class="biz-progress-fill" style="width: ' + wProgress + '%; background: ' + wColor + ';"></div></div>';
+                html += '</div>';
+                
+                dayKeys.forEach(function(dayKey) {
+                    var dayItems = weekData.days[dayKey];
+                    html += '<div class="day-card" style="margin-bottom:12px;">';
+                    html += '<div class="day-header">';
+                    html += '<span>📅 ' + formatDate(dayKey) + ' | <span style="background:var(--gold); color:#0a0a1a; padding:2px 6px; border-radius:4px; font-weight:700;">' + (dayItems[0].project || 'UNKNOWN') + '</span></span>';
+                    html += '<span style="background:var(--blue); color:#0a0a1a; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700;">' + (dayItems[0].type || 'ENTRY') + '</span>';
+                    html += '</div>';
+                    
+                    dayItems.forEach(function(item) {
+                        var finNature = (item.finNature || 'EXPENSE').toUpperCase(); var isOverBudget = item.actualCost > item.budget && item.budget > 0; var progressPercent = (item.budget > 0) ? Math.min((item.actualCost / item.budget) * 100, 100) : 0; var finColor = finNature === 'PROFIT' || finNature === 'INCOME' ? 'var(--green)' : (finNature === 'INVESTMENT' ? 'var(--blue)' : 'var(--red)');
+                        var spentModeColor = item.spentMode === 'ONLINE' ? 'var(--green)' : 'var(--text-muted)';
+                        html += '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 12px; margin-top: 8px;"><div style="flex:1;">';
+                        html += '<div style="margin-bottom:6px;"><span style="background:' + spentModeColor + '; color:#0a0a1a; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700;">' + (item.spentMode || 'OFFLINE') + '</span></div>';
+                        if (item.nextStep) html += '<div style="font-size:12px; color:var(--text-muted); margin-bottom:6px; border-left:2px solid var(--gold); padding-left:8px;">⏭️ Next: ' + item.nextStep + '</div>';
+                        if (item.particulars) html += '<div style="font-size:14px; font-weight:600; margin-bottom:4px;">' + item.particulars + '</div>';
+                        if (item.material || item.productDesc) { html += '<div style="display:flex; gap:10px; font-size:13px; margin-bottom:8px;">'; if (item.material) html += '<span>📦 ' + item.material + '</span>'; if (item.productDesc) html += '<span style="color:var(--text-secondary);">🏷️ ' + item.productDesc + '</span>'; html += '</div>'; }
+                        if (item.qty > 0) html += '<div style="font-size:12px; color:var(--text-muted);">Qty: ' + item.qty + ' ' + (item.unit || '') + '</div>';
+                        if (finNature) html += '<div style="font-size:11px; color:' + finColor + '; margin-top:2px; font-weight:600;">' + finNature + '</div>';
+                        html += '</div><div style="flex:1; text-align:right; font-size:11px; line-height:1.6;">';
+                        if (finNature === 'EXPENSE') { 
+                            var calcVar = item.budget - item.actualCost; var calcVarPct = item.budget > 0 ? ((calcVar / item.budget) * 100).toFixed(1) + '%' : '0%'; var varColor = calcVar >= 0 ? 'var(--green)' : 'var(--red)'; 
+                            html += '<div>Budget (B): <span style="color: var(--blue);">' + formatCurrency(item.budget) + '</span></div>';
+                            html += '<div>Actual (A): <span style="color: var(--red);">' + formatCurrency(item.actualCost) + '</span></div>';
+                            html += '<div style="color:' + varColor + ';">Var (FA): ' + formatCurrency(calcVar) + '</div>';
+                            html += '<div style="color:' + varColor + ';">Var% (VP): ' + calcVarPct + '</div>';
+                        } else if (finNature === 'INCOME' || finNature === 'PROFIT') { var displayAmt = item.profitAmount > 0 ? item.profitAmount : item.actualCost; html += '<div style="color:var(--green); font-weight:700; font-size:13px; margin-top:4px;">' + finNature + ': ' + formatCurrency(displayAmt) + '</div>'; } else { html += '<div style="color:var(--text-muted); font-style:italic;">No financials</div>'; }
+                        html += '</div></div>';
+                        if (finNature === 'EXPENSE' && item.budget > 0) html += '<div class="biz-progress-bg" style="margin-top:10px;"><div class="biz-progress-fill" style="width: ' + progressPercent + '%; background: ' + (isOverBudget ? 'var(--red)' : 'var(--green)') + ';"></div></div>'; 
+                        var hasDetails = item.reason || item.note || item.deadline; 
+                        if (hasDetails) { 
+                            html += '<div class="tx-notes open" style="display:block; margin-top:8px; border-left-color:var(--blue);">'; 
+                            if (item.deadline) html += '<div>⏰ Deadline: ' + formatDate(item.deadline) + (item.deadlineMet ? ' (' + item.deadlineMet + ')' : '') + '</div>'; 
+                            if (item.reason) html += '<div>💡 Reason: ' + item.reason + '</div>'; 
+                            if (item.note) html += '<div>📝 Note: ' + item.note + '</div>'; 
+                            html += '</div>'; 
+                        }
+                    });
+                    html += '</div>';
+                });
+            });
+            html += '</div>';
+        });
+        container.innerHTML = html;
+    }
+    
+    function renderBizAll() { renderBusinessList('bizAllList', appData.businessInventory, 'ALL'); }
+    function renderUpcoming() { renderBusinessList('upcomingList', appData.businessInventory, 'UPCOMING'); }
+    function renderStencil() { renderBusinessList('stencilList', appData.businessInventory, 'STENCIL'); }
+    function renderNaturals() { renderBusinessList('naturalsList', appData.businessInventory, 'NATURALS'); }
+
+    function renderGlobalMaster() {
+        var container = document.getElementById('globalList'); if (!container) return; var globalData = [];
+        appData.transactions.forEach(function(tx) { globalData.push({ date: tx.date, title: tx.purpose || 'Transaction', amount: tx.cr > 0 ? -tx.cr : tx.dr, type: 'Personal', category: (tx.expPlace||'') + (tx.expType?' · '+tx.expType:'') + (tx.subCat?' · '+tx.subCat:''), source: '📂 ' + (tx.spentFrom||'UNKNOWN') + ' | ' + (tx.mode||'OFFLINE'), notes: tx.notes }); });
+        appData.onlineTransactions.forEach(function(tx) { globalData.push({ date: tx.date, title: tx.purpose || 'Online Transaction', amount: tx.cr > 0 ? -tx.cr : tx.dr, type: 'Personal', category: (tx.expType||'') + (tx.subCat?' · '+tx.subCat:''), source: '📂 ' + (tx.spentFrom||'ONLINE') + ' | ONLINE', notes: tx.notes }); });
+        appData.businessInventory.forEach(function(biz) { globalData.push({ date: biz.date, title: biz.material || biz.particulars || 'Business Purchase', amount: (biz.profitAmount || 0) - (biz.actualCost || 0), type: 'Business', category: '🏭 ' + (biz.project || 'UNKNOWN') + ' · ' + (biz.type || ''), source: 'Qty: ' + biz.qty + ' ' + (biz.unit || ''), notes: biz.note || biz.reason }); });
+        globalData.sort(function(a, b) { return new Date(b.date || '1970-01-01') - new Date(a.date || '1970-01-01'); });
+        if (globalData.length === 0) { container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;">No records found</p>'; return; }
+        var html = ''; globalData.forEach(function(item) { var sign = item.amount >= 0 ? '+' : ''; var badgeColor = item.type === 'Business' ? 'var(--blue)' : 'var(--gold)'; html += '<div class="day-card" style="margin-bottom:10px;"><div class="day-header"><span>📅 ' + formatDate(item.date) + ' <span style="background:'+badgeColor+'; color:#0a0a1a; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:6px;">' + item.type + '</span></span><span style="color:' + (item.amount >= 0 ? 'var(--green)' : 'var(--red)') + '; font-weight:700;">' + sign + formatCurrency(item.amount) + '</span></div><div style="font-size:14px; font-weight:600; margin-bottom:4px;">' + item.title + '</div><div style="font-size:12px; color:var(--text-muted);">' + item.category + '</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">' + item.source + '</div>'; if (item.notes) { html += '<div class="tx-notes open" style="display:block; margin-top:8px; border-left-color:var(--blue);">📝 ' + item.notes + '</div>'; } html += '</div>'; });
+        container.innerHTML = html;
+    }
+
+    function getHeatmapDateKey(value) {
+        if (!value) return '';
+        var dateText = value.toString().trim();
+        var parts = dateText.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+        var date;
+        if (parts) {
+            date = new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]));
+            if (date.getFullYear() !== Number(parts[1]) || date.getMonth() !== Number(parts[2]) - 1 || date.getDate() !== Number(parts[3])) return '';
+        } else {
+            date = parseDate(dateText);
+            if (!date) return '';
+        }
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+
+    function getSpendingRecords() {
+        var records = [];
+        function addRecord(date, source, recipient, amount, type, category, subCategory, place) {
+            amount = Number(amount) || 0;
+            var dateKey = getHeatmapDateKey(date);
+            if (dateKey && amount > 0) records.push({ date: dateKey, source: source || 'Unknown source', recipient: recipient || 'Unspecified', amount: amount, type: type, category: category || '', subCategory: subCategory || '', place: place || '' });
+        }
+        appData.transactions.forEach(function(tx) {
+            if (tx.cr > 0 && !isSavings(tx)) addRecord(tx.date, tx.spentFrom, tx.purpose, tx.cr, (tx.mode || 'OFFLINE').toString().toUpperCase().includes('ONLINE') ? 'Online' : 'Offline', tx.expType || tx.subCat, tx.subCat, tx.expPlace);
+        });
+        appData.onlineTransactions.forEach(function(tx) {
+            if (tx.cr > 0 && !isSavings(tx)) addRecord(tx.date, tx.spentFrom || 'ONLINE', tx.purpose, tx.cr, 'Online', tx.expType || tx.subCat, tx.subCat, tx.expPlace);
+        });
+        appData.donations.forEach(function(tx) {
+            var recipient = tx.person && tx.place ? tx.person + ' · ' + tx.place : (tx.person || tx.place || 'Donation');
+            addRecord(tx.date, tx.spentFrom, recipient, tx.cashGiven, 'Donations', tx.type || 'Donations', '', tx.place);
+        });
+        appData.lending.forEach(function(tx) {
+            addRecord(tx.date, tx.givenFrom, tx.purpose || 'Lending', tx.cr, 'Lending', 'Lending', tx.purpose, '');
+        });
+        return records;
+    }
+
+    function changeHeatmapDateMode() {
+        var isRange = document.getElementById('heatmapDateMode').value === 'range';
+        document.getElementById('heatmapMonthControl').style.display = isRange ? 'none' : 'block';
+        document.getElementById('heatmapDateRange').style.display = isRange ? 'grid' : 'none';
+        renderHeatmap();
+    }
+
+    function updateHeatmapFilterOptions(records) {
+        function populate(selectId, values, placeholder) {
+            var select = document.getElementById(selectId);
+            var selected = select.value;
+            select.innerHTML = '<option value="all">' + placeholder + '</option>';
+            values.forEach(function(value) {
+                var option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
+            if (values.includes(selected)) select.value = selected;
+        }
+
+        var types = Array.from(new Set(records.map(function(record) { return record.type; }).filter(Boolean))).sort();
+        populate('heatmapType', types, 'All spending');
+        var selectedType = document.getElementById('heatmapType').value;
+        var typeRecords = records.filter(function(record) { return selectedType === 'all' || record.type === selectedType; });
+        var categories = Array.from(new Set(typeRecords.map(function(record) { return record.category; }).filter(Boolean))).sort();
+        populate('heatmapCategory', categories, 'All categories');
+        var selectedCategory = document.getElementById('heatmapCategory').value;
+        var categoryRecords = typeRecords.filter(function(record) { return selectedCategory === 'all' || record.category === selectedCategory; });
+        var subCategories = Array.from(new Set(categoryRecords.map(function(record) { return record.subCategory; }).filter(Boolean))).sort();
+        populate('heatmapSubCategory', subCategories, 'All subcategories');
+        var places = Array.from(new Set(records.map(function(record) { return record.place; }).filter(Boolean))).sort();
+        populate('heatmapPlace', places, 'All places');
+    }
+
+    function clearHeatmapFilters() {
+        document.getElementById('heatmapPeriod').value = 'month';
+        document.getElementById('heatmapDateMode').value = 'month';
+        document.getElementById('heatmapMonth').value = todayISO().slice(0, 7);
+        document.getElementById('heatmapFromDate').value = '';
+        document.getElementById('heatmapToDate').value = '';
+        ['heatmapType', 'heatmapCategory', 'heatmapSubCategory', 'heatmapPlace'].forEach(function(id) {
+            document.getElementById(id).value = 'all';
+        });
+        changeHeatmapDateMode();
+    }
+
+    function renderHeatmap() {
+        var monthInput = document.getElementById('heatmapMonth');
+        var periodSelect = document.getElementById('heatmapPeriod');
+        var weekSelect = document.getElementById('heatmapWeek');
+        var weekControl = document.getElementById('heatmapWeekControl');
+        var calendar = document.getElementById('heatmapCalendar');
+        var breakdown = document.getElementById('heatmapBreakdown');
+        if (!monthInput || !periodSelect || !weekSelect || !calendar || !breakdown) return;
+        if (!monthInput.value) monthInput.value = todayISO().slice(0, 7);
+
+        var isRange = document.getElementById('heatmapDateMode').value === 'range';
+        var monthControl = document.getElementById('heatmapMonthControl');
+        var dateRangeControl = document.getElementById('heatmapDateRange');
+        monthControl.style.display = isRange ? 'none' : 'block';
+        dateRangeControl.style.display = isRange ? 'grid' : 'none';
+        var startDate = isRange ? getHeatmapDateKey(document.getElementById('heatmapFromDate').value) : monthInput.value + '-01';
+        var endDate = isRange ? getHeatmapDateKey(document.getElementById('heatmapToDate').value) : '';
+        if (isRange && !startDate && !endDate) {
+            endDate = todayISO();
+            startDate = endDate.slice(0, 7) + '-01';
+        } else if (isRange && !startDate) {
+            startDate = endDate;
+        } else if (isRange && !endDate) {
+            endDate = todayISO();
+        }
+        if (!isRange) {
+            var monthParts = monthInput.value.split('-');
+            var selectedYear = Number(monthParts[0]);
+            var selectedMonth = Number(monthParts[1]) - 1;
+            if (!Number.isInteger(selectedYear) || !Number.isInteger(selectedMonth) || selectedMonth < 0 || selectedMonth > 11) return;
+            endDate = selectedYear + '-' + String(selectedMonth + 1).padStart(2, '0') + '-' + String(new Date(selectedYear, selectedMonth + 1, 0).getDate()).padStart(2, '0');
+        }
+        var startParts = startDate.split('-').map(Number);
+        var endParts = (endDate || startDate).split('-').map(Number);
+        var firstDate = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+        var lastDate = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+        if (firstDate > lastDate) {
+            calendar.innerHTML = '<p style="color:var(--red);font-size:12px;">Start date must be on or before end date.</p>';
+            breakdown.innerHTML = '';
+            var noRecords = document.createElement('p');
+            noRecords.style.cssText = 'color:var(--text-muted);font-size:12px;';
+            noRecords.textContent = 'No spending recorded for this period.';
+            breakdown.appendChild(noRecords);
+            document.getElementById('heatmapTotal').textContent = formatCurrency(0);
+            var invalidLabels = document.querySelectorAll('#statsGrid .label');
+            var invalidValues = document.querySelectorAll('#statsGrid .value');
+            [['Period Spent', 'red'], ['Offline', 'red'], ['Online', 'blue'], ['Donations', 'gold'], ['Lending', 'gold'], ['Spending Days', 'green']].forEach(function(stat, index) {
+                if (invalidLabels[index]) invalidLabels[index].textContent = stat[0];
+                if (invalidValues[index]) {
+                    invalidValues[index].textContent = index === 5 ? '0' : formatCurrency(0);
+                    invalidValues[index].className = 'value ' + stat[1];
+                }
+            });
+            return;
+        }
+        var firstMonthDate = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+        var year = firstMonthDate.getFullYear();
+        var month = firstMonthDate.getMonth();
+        var firstWeekday = firstMonthDate.getDay();
+        var daysInMonth = new Date(year, month + 1, 0).getDate();
+        var weekCount = Math.ceil((firstWeekday + daysInMonth) / 7);
+        var selectedWeek = Number(weekSelect.value) || 0;
+        var weekOptions = '';
+        for (var week = 0; week < weekCount; week++) {
+            var firstDay = Math.max(1, week * 7 - firstWeekday + 1);
+            var lastDay = Math.min(daysInMonth, (week + 1) * 7 - firstWeekday);
+            weekOptions += '<option value="' + week + '">Week ' + (week + 1) + ' (' + firstDay + '–' + lastDay + ')</option>';
+        }
+        weekSelect.innerHTML = weekOptions;
+        if (selectedWeek >= weekCount) selectedWeek = 0;
+        weekSelect.value = String(selectedWeek);
+
+        var isWeekView = !isRange && periodSelect.value === 'week';
+        weekControl.style.display = isWeekView ? 'block' : 'none';
+        var startDay = isWeekView ? selectedWeek * 7 - firstWeekday + 1 : 1 - firstWeekday;
+        var visibleDays = isRange ? Math.ceil((lastDate - firstDate) / 86400000) + 1 : (isWeekView ? 7 : weekCount * 7);
+        var records = getSpendingRecords();
+        var dateRecords = records.filter(function(record) {
+            var date = new Date(record.date + 'T00:00:00');
+            return date >= firstDate && date <= lastDate;
+        });
+        updateHeatmapFilterOptions(dateRecords);
+        var selectedType = document.getElementById('heatmapType').value;
+        var selectedCategory = document.getElementById('heatmapCategory').value;
+        var selectedSubCategory = document.getElementById('heatmapSubCategory').value;
+        var selectedPlace = document.getElementById('heatmapPlace').value;
+        var dateScopedRecords = dateRecords.filter(function(record) {
+            return (selectedType === 'all' || record.type === selectedType)
+                && (selectedCategory === 'all' || record.category === selectedCategory)
+                && (selectedSubCategory === 'all' || record.subCategory === selectedSubCategory)
+                && (selectedPlace === 'all' || record.place === selectedPlace);
+        });
+        var scopedRecords = dateScopedRecords.filter(function(record) {
+            var date = new Date(record.date + 'T00:00:00');
+            return isRange || !isWeekView || (date.getFullYear() === year && date.getMonth() === month && date.getDate() >= startDay && date.getDate() < startDay + 7);
+        });
+        var dailyTotals = Object.create(null);
+        var maxDailyTotal = 0;
+        var total = 0;
+        scopedRecords.forEach(function(record) {
+            dailyTotals[record.date] = (dailyTotals[record.date] || 0) + record.amount;
+            total += record.amount;
+        });
+        Object.keys(dailyTotals).forEach(function(date) { maxDailyTotal = Math.max(maxDailyTotal, dailyTotals[date]); });
+
+        var title = document.createElement('h2');
+        title.style.cssText = 'font-size:15px; margin-bottom:10px;';
+        title.textContent = isRange
+            ? formatDate(startDate) + (startDate === endDate ? '' : ' – ' + formatDate(endDate))
+            : new Date(year, month, 1).toLocaleString('en', { month: 'long', year: 'numeric' }) + (isWeekView ? ' · Week ' + (selectedWeek + 1) : '');
+        var grid = document.createElement('div');
+        grid.className = 'heatmap-grid';
+        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(function(dayName) {
+            var dayHeader = document.createElement('div');
+            dayHeader.className = 'heatmap-weekday';
+            dayHeader.textContent = dayName;
+            grid.appendChild(dayHeader);
+        });
+        for (var cell = 0; cell < visibleDays; cell++) {
+            var calendarDate = isRange ? new Date(firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate() + cell) : null;
+            var dayNumber = isRange ? calendarDate.getDate() : startDay + cell;
+            var dayCell = document.createElement('div');
+            if (isRange && cell === 0) {
+                for (var padding = 0; padding < calendarDate.getDay(); padding++) {
+                    var paddingCell = document.createElement('div');
+                    paddingCell.className = 'heatmap-day empty';
+                    grid.appendChild(paddingCell);
+                }
+            }
+            if (!isRange && (dayNumber < 1 || dayNumber > daysInMonth)) {
+                dayCell.className = 'heatmap-day empty';
+            } else {
+                var dateKey = isRange
+                    ? calendarDate.getFullYear() + '-' + String(calendarDate.getMonth() + 1).padStart(2, '0') + '-' + String(dayNumber).padStart(2, '0')
+                    : year + '-' + String(month + 1).padStart(2, '0') + '-' + String(dayNumber).padStart(2, '0');
+                var amount = dailyTotals[dateKey] || 0;
+                var intensity = maxDailyTotal ? 0.12 + 0.78 * (amount / maxDailyTotal) : 0;
+                dayCell.className = 'heatmap-day' + (dateKey === todayISO() ? ' today' : '');
+                dayCell.style.backgroundColor = amount ? 'rgba(248, 113, 113, ' + intensity.toFixed(2) + ')' : 'var(--bg-card)';
+                dayCell.title = formatDate(dateKey) + ' · Spent ' + formatCurrency(amount);
+                var numberLabel = document.createElement('div');
+                numberLabel.className = 'heatmap-day-number';
+                numberLabel.textContent = String(dayNumber);
+                var amountLabel = document.createElement('div');
+                amountLabel.className = 'heatmap-day-amount';
+                amountLabel.textContent = amount ? formatCurrency(amount) : '';
+                if (intensity > 0.55) amountLabel.style.color = '#0a0a1a';
+                dayCell.appendChild(numberLabel);
+                dayCell.appendChild(amountLabel);
+            }
+            grid.appendChild(dayCell);
+        }
+        var legend = document.createElement('div');
+        legend.className = 'heatmap-legend';
+        legend.innerHTML = '<span>Less</span><span class="heatmap-legend-swatch" style="background:var(--bg-card)"></span><span class="heatmap-legend-swatch" style="background:rgba(248,113,113,.35)"></span><span class="heatmap-legend-swatch" style="background:rgba(248,113,113,.9)"></span><span>More</span>';
+        calendar.innerHTML = '';
+        calendar.appendChild(title);
+        calendar.appendChild(grid);
+        calendar.appendChild(legend);
+
+        var summaryGroups = Object.create(null);
+        scopedRecords.forEach(function(record) {
+            var key = JSON.stringify([record.source, record.recipient]);
+            if (!summaryGroups[key]) summaryGroups[key] = { source: record.source, recipient: record.recipient, amount: 0 };
+            summaryGroups[key].amount += record.amount;
+        });
+        var sortedGroups = Object.keys(summaryGroups).map(function(key) { return summaryGroups[key]; }).sort(function(a, b) { return b.amount - a.amount; });
+        breakdown.innerHTML = '';
+        if (!sortedGroups.length) {
+            var emptyMessage = document.createElement('p');
+            emptyMessage.style.cssText = 'color:var(--text-muted);font-size:12px;';
+            emptyMessage.textContent = 'No spending recorded for this period.';
+            breakdown.appendChild(emptyMessage);
+        } else {
+            sortedGroups.forEach(function(group) {
+                var item = document.createElement('div');
+                item.className = 'heatmap-summary-item';
+                var source = document.createElement('div');
+                source.className = 'heatmap-summary-source';
+                source.textContent = 'FROM ' + group.source;
+                var recipient = document.createElement('div');
+                recipient.className = 'heatmap-summary-recipient';
+                recipient.textContent = 'TO ' + group.recipient;
+                var amount = document.createElement('div');
+                amount.className = 'heatmap-summary-amount';
+                amount.textContent = formatCurrency(group.amount);
+                item.appendChild(source);
+                item.appendChild(recipient);
+                item.appendChild(amount);
+                breakdown.appendChild(item);
+            });
+        }
+        document.getElementById('heatmapTotal').textContent = formatCurrency(total);
+
+        var statsLabels = document.querySelectorAll('#statsGrid .label');
+        var statsCards = document.querySelectorAll('#statsGrid .value');
+        var typeTotals = { Offline: 0, Online: 0, Donations: 0, Lending: 0 };
+        scopedRecords.forEach(function(record) { typeTotals[record.type] += record.amount; });
+        var stats = [
+            ['Period Spent', total, 'red'],
+            ['Offline', typeTotals.Offline, 'red'],
+            ['Online', typeTotals.Online, 'blue'],
+            ['Donations', typeTotals.Donations, 'gold'],
+            ['Lending', typeTotals.Lending, 'gold'],
+            ['Spending Days', Object.keys(dailyTotals).length, 'green']
+        ];
+        stats.forEach(function(stat, index) {
+            if (statsLabels[index]) statsLabels[index].textContent = stat[0];
+            if (statsCards[index]) {
+                statsCards[index].textContent = index === 5 ? String(stat[1]) : formatCurrency(stat[1]);
+                statsCards[index].className = 'value ' + stat[2];
+            }
+        });
+    }
+
+    function updateDashboard(tabId) {
+        var cards = document.querySelectorAll('#statsGrid .stat-card'); var labels = document.querySelectorAll('#statsGrid .label');
+        function setCard(index, label, value, colorClass) { 
+            var card = cards[index]; if (!card) return; 
+            var labelEl = labels[index]; var valEl = card.querySelector('.value'); 
+            if (labelEl) labelEl.textContent = label; 
+            if (valEl) { valEl.textContent = formatCurrency(value); valEl.className = 'value ' + colorClass; } 
+        }
+
+        if (tabId === 'biz-all' || tabId === 'stencil' || tabId === 'naturals') {
+            var filteredBiz = appData.businessInventory;
+            if (tabId === 'stencil') filteredBiz = filteredBiz.filter(t => t.project && t.project.toUpperCase() === 'STENCIL'); 
+            else if (tabId === 'naturals') filteredBiz = filteredBiz.filter(t => t.project && t.project.toUpperCase() === 'NATURALS'); 
+            
+            var bizFilterType = document.getElementById('bizFilterType')?.value || 'all'; var bizFilterParticulars = document.getElementById('bizFilterParticulars')?.value || 'all'; var bizFilterMaterials = document.getElementById('bizFilterMaterials')?.value || 'all'; var bizFilterMonth = document.getElementById('bizFilterMonth')?.value || 'all'; var bizFromDate = document.getElementById('bizFromDate')?.value || ''; var bizToDate = document.getElementById('bizToDate')?.value || '';
+
+            if (bizFilterType !== 'all') filteredBiz = filteredBiz.filter(t => t.type && t.type.toUpperCase() === bizFilterType.toUpperCase());
+            if (bizFilterParticulars !== 'all') filteredBiz = filteredBiz.filter(t => t.particulars && t.particulars.trim() === bizFilterParticulars);
+            if (bizFilterMaterials !== 'all') filteredBiz = filteredBiz.filter(t => t.material && t.material.trim() === bizFilterMaterials);
+            if (bizFilterMonth !== 'all') { filteredBiz = filteredBiz.filter(function(t) { if (!t.date) return false; var d = new Date(t.date); if (isNaN(d)) return false; var monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']; return (monthNames[d.getMonth()] + ' ' + d.getFullYear()) === bizFilterMonth; }); }
+            if (bizFromDate) filteredBiz = filteredBiz.filter(t => t.date >= bizFromDate);
+            if (bizToDate) filteredBiz = filteredBiz.filter(t => t.date <= bizToDate);
+            
+            var totalBudget = 0, totalActual = 0, totalProfit = 0;
+            filteredBiz.forEach(function(t) { totalBudget += (t.budget || 0); totalActual += (t.actualCost || 0); totalProfit += (t.profitAmount || 0); });
+            var totalVariance = totalBudget - totalActual; var remaining = totalBudget - totalActual;
+            
+            setCard(0, 'Total Budget', totalBudget, 'blue'); setCard(1, 'Total Actual Cost', totalActual, 'red'); setCard(2, 'Remaining', remaining, remaining >= 0 ? 'green' : 'red'); setCard(3, 'Fav. Variance', totalVariance, totalVariance >= 0 ? 'green' : 'red'); setCard(4, 'Total Profit', totalProfit, 'gold'); setCard(5, '', 0, ''); 
+            return;
+        }
+
+        if (tabId === 'global') {
+            var totalPersonalExp = 0, totalBusinessExp = 0, totalBusinessProfit = 0;
+            appData.transactions.forEach(t => { if(t.cr > 0) totalPersonalExp += t.cr; }); appData.onlineTransactions.forEach(t => { if(t.cr > 0) totalPersonalExp += t.cr; }); appData.businessInventory.forEach(t => { totalBusinessExp += (t.actualCost || 0); totalBusinessProfit += (t.profitAmount || 0); });
+            setCard(0, 'Personal Exp', totalPersonalExp, 'red'); setCard(1, 'Business Exp', totalBusinessExp, 'blue'); setCard(2, 'Net Business', totalBusinessProfit - totalBusinessExp, (totalBusinessProfit - totalBusinessExp) >= 0 ? 'green' : 'red'); setCard(3, '', 0, ''); setCard(4, '', 0, ''); setCard(5, '', 0, ''); 
+            return;
+        }
+
+        if (tabId === 'all-transactions' || tabId === 'offline' || tabId === 'online') {
+            var filterType = document.getElementById('filterType')?.value || 'all'; var filterCategory = document.getElementById('filterCategory')?.value || 'all'; var filterSubCat = document.getElementById('filterSubCat')?.value || 'all'; var filterExpPlace = document.getElementById('filterExpPlace')?.value || 'all'; var filterMonth = document.getElementById('filterMonth')?.value || 'all'; var fromDate = document.getElementById('fromDate')?.value || ''; var toDate = document.getElementById('toDate')?.value || '';
+            
+            var allTx = [];
+            if (tabId === 'all-transactions') { appData.transactions.forEach(tx => allTx.push(Object.assign({}, tx, {mode: 'OFFLINE'}))); appData.onlineTransactions.forEach(tx => allTx.push(Object.assign({}, tx, {mode: 'ONLINE'}))); } 
+            else if (tabId === 'offline') appData.transactions.forEach(tx => allTx.push(Object.assign({}, tx, {mode: 'OFFLINE'}))); 
+            else if (tabId === 'online') appData.onlineTransactions.forEach(tx => allTx.push(Object.assign({}, tx, {mode: 'ONLINE'})));
+            
+            var filteredTx = allTx.filter(function(t) {
+                if (filterType === 'income' && t.dr <= 0) return false; if (filterType === 'expense' && t.cr <= 0) return false;
+                if (filterCategory !== 'all' && !((t.expType && t.expType.trim() === filterCategory) || (t.subCat && t.subCat.trim() === filterCategory))) return false;
+                if (filterSubCat !== 'all' && !((t.subCat && t.subCat.trim() === filterSubCat) || (t.subCat2 && t.subCat2.trim() === filterSubCat))) return false;
+                if (filterExpPlace !== 'all' && (!t.expPlace || t.expPlace.trim() !== filterExpPlace)) return false;
+                if (filterMonth !== 'all' && t.month !== filterMonth) return false;
+                if (fromDate && t.date < fromDate) return false; if (toDate && t.date > toDate) return false;
+                if (currentWalletFilter !== 'ALL' && t.spentFrom !== currentWalletFilter) return false;
+                return true;
+            });
+            
+            var totalIncome = 0, totalExpense = 0, totalUnknown = 0;
+            filteredTx.forEach(function(t) {
+                if (isSavings(t)) { /* skip */ } else if (isUnknownCash(t)) { totalUnknown += t.dr; } 
+                else { if (t.dr > 0 && isIncome(t)) totalIncome += t.dr; if (t.cr > 0) totalExpense += t.cr; }
+            });
+            
+            var currentMonth = new Date().getMonth(); var currentYear = new Date().getFullYear(); var totalBudgetAmount = 0;
+            if (appData.budgetData) {
+                appData.budgetData.forEach(function(b) {
+                    var bDate = new Date(b.date);
+                    if (!isNaN(bDate) && bDate.getMonth() === currentMonth && bDate.getFullYear() === currentYear) {
+                        var modeMatch = true; if (tabId === 'online') modeMatch = b.mode && b.mode.toString().includes('ONLINE'); else if (tabId === 'offline') modeMatch = !b.mode || !b.mode.toString().includes('ONLINE');
+                        var walletMatch = (currentWalletFilter === 'ALL' || b.wallet === currentWalletFilter); var placeMatch = (filterExpPlace === 'all' || b.expPlace === filterExpPlace);
+                        if (modeMatch && walletMatch && placeMatch) totalBudgetAmount += (parseFloat(b.monthlyBudget) || 0);
+                    }
+                });
+            }
+
+            var totalVariance = totalBudgetAmount - totalExpense; var balance = totalIncome - totalExpense;
+            setCard(0, 'Total Expense', totalExpense, 'red'); setCard(1, 'Total Income', totalIncome, 'green'); setCard(2, 'Total Balance', balance, balance >= 0 ? 'green' : 'red'); setCard(3, 'Monthly Budget', totalBudgetAmount, 'blue');
+            if (totalVariance >= 0) setCard(4, 'Total Savings', totalVariance, 'green'); else setCard(4, 'Overspent', Math.abs(totalVariance), 'red');
+            setCard(5, 'Unknown/Inward', totalUnknown, 'gold');
+            return;
+        }
+
+        if (tabId === 'offerings') {
+            var totalDonations = 0, totalOfferings = 0; var donationWallets = {};
+            appData.donations.forEach(function(t) { if (t.type && t.type.toUpperCase().includes('DONATION')) totalDonations += t.cashGiven; else if (t.type && t.type.toUpperCase().includes('OFFERING')) totalOfferings += t.cashGiven; if (t.spentFrom && t.spentFrom.trim() !== '') donationWallets[t.spentFrom.toUpperCase().trim()] = true; });
+            var totalCashGiven = totalDonations + totalOfferings; var donationBudget = 0; var currentMonth = new Date().getMonth(); var currentYear = new Date().getFullYear();
+            if (appData.budgetData) { appData.budgetData.forEach(function(b) { var bDate = new Date(b.date); if (!isNaN(bDate) && bDate.getMonth() === currentMonth && bDate.getFullYear() === currentYear) { var wallet = (b.wallet || '').toString().toUpperCase().trim(); if (donationWallets[wallet]) donationBudget += (parseFloat(b.monthlyBudget) || 0); } }); }
+            var donationBalance = donationBudget - totalCashGiven;
+            setCard(0, 'Donation Budget', donationBudget, 'blue'); setCard(1, 'Total Cash Given', totalCashGiven, 'gold'); setCard(2, 'Balance', donationBalance, donationBalance >= 0 ? 'green' : 'red'); setCard(3, 'Total Donations', totalDonations, 'gold'); setCard(4, 'Total Offerings', totalOfferings, 'gold'); setCard(5, '', 0, ''); 
+            return;
+        }
+
+        if (tabId === 'receivables') { 
+            var totalPending = 0, totalReceived = 0; appData.receivables.forEach(function(t) { totalPending += (t.toBeReceived || 0); totalReceived += (t.tillReceived || 0); }); 
+            setCard(0, 'Total Pending', totalPending, 'red'); setCard(1, 'Total Received', totalReceived, 'green'); setCard(2, 'Total Expected', totalPending + totalReceived, 'gold'); setCard(3, '', 0, ''); setCard(4, '', 0, ''); setCard(5, '', 0, ''); 
+            return;
+        }
+
+        if (tabId === 'lending') { 
+            var totalLent = 0, totalReceivedBack = 0; appData.lending.forEach(function(t) { if (t.cr > 0) totalLent += t.cr; if (t.dr > 0) totalReceivedBack += t.dr; }); 
+            setCard(0, 'Net Balance', totalReceivedBack - totalLent, (totalReceivedBack - totalLent) >= 0 ? 'green' : 'red'); setCard(1, 'Total Lent', totalLent, 'red'); setCard(2, 'Total Received', totalReceivedBack, 'green'); setCard(3, '', 0, ''); setCard(4, '', 0, ''); setCard(5, '', 0, ''); 
+            return;
+        }
+
+        if (tabId === 'savings') {
+            var totalSavingsAmount = 0; var totalOutward = 0; var totalNeedToGetBack = 0;
+            appData.savings.forEach(function(t) { if (t.dr > 0) totalSavingsAmount += t.dr; if (t.cr > 0) totalOutward += t.cr; if (t.type && t.type.toUpperCase().includes('LEND OUTWARD')) { if (!t.actualReceivedDate || t.actualReceivedDate.toString().trim() === '') totalNeedToGetBack += (t.cr || 0); } });
+            var netAvailable = totalSavingsAmount - totalOutward;
+            setCard(0, 'Total Savings', totalSavingsAmount, 'green'); setCard(1, 'Outward Sent', totalOutward, 'red'); setCard(2, 'Need to Get Back', totalNeedToGetBack, 'gold'); setCard(3, 'Net Available', netAvailable, netAvailable >= 0 ? 'green' : 'red'); setCard(4, '', 0, ''); setCard(5, '', 0, ''); 
+            return;
+        }
+
+        if (tabId === 'unknown') {
+            var offlineUnknown = 0, onlineUnknown = 0;
+            appData.transactions.forEach(t => { if (isUnknownCash(t)) offlineUnknown += t.dr; }); appData.onlineTransactions.forEach(t => { if (isUnknownCash(t)) onlineUnknown += t.dr; });
+            var totalUnknown = offlineUnknown + onlineUnknown;
+            setCard(0, 'Total Amount', totalUnknown, 'gold'); setCard(1, 'Total Offline', offlineUnknown, 'gold'); setCard(2, 'Total Online', onlineUnknown, 'gold'); setCard(3, '', 0, ''); setCard(4, '', 0, ''); setCard(5, '', 0, ''); 
+            return;
+        }
+    }
+
+    function switchMasterTracker(mode) {
+        document.getElementById('nav-expense').style.display = mode === 'expense' ? 'flex' : 'none'; 
+        document.getElementById('nav-business').style.display = mode === 'business' ? 'flex' : 'none';
+        document.getElementById('expenseFilters').style.display = (mode === 'expense' || mode === 'global') ? 'flex' : 'none';
+        document.getElementById('businessFilters').style.display = (mode === 'business') ? 'flex' : 'none';
+        
+        if (mode === 'global') { 
+            document.body.classList.remove('heatmap-active');
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); 
+            document.getElementById('tab-global').classList.add('active'); 
+            document.getElementById('currentTabTitle').textContent = 'Global View';
+            renderGlobalMaster(); 
+        } 
+        else if (mode === 'expense') switchTab('all-transactions'); 
+        else switchTab('biz-all'); 
+    }
+    
+    let currentWalletFilter = 'ALL';
+
+    function renderWalletNav(tabId) {
+        var container = document.getElementById('walletNav'); if (!container) return;
+        var showNav = ['all-transactions', 'offline', 'online', 'savings', 'unknown'].includes(tabId);
+        container.style.display = showNav ? 'flex' : 'none'; if (!showNav) return;
+
+        var sourceData = []; if (tabId === 'online') sourceData = appData.onlineTransactions; else if (tabId === 'savings') sourceData = appData.savings; else if (tabId === 'unknown') sourceData = appData.transactions.filter(isUnknownCash); else sourceData = appData.transactions;
+
+        var wallets = {};
+        sourceData.forEach(function(tx) { 
+            if (tabId === 'savings') { if (tx.givenFrom && tx.givenFrom.trim() !== '') wallets[tx.givenFrom] = true; if (tx.receivedIn && tx.receivedIn.trim() !== '') wallets[tx.receivedIn] = true; } 
+            else { if (tx.spentFrom && tx.spentFrom.trim() !== '') wallets[tx.spentFrom] = true; }
+        });
+
+        var html = '<button class="wallet-btn ' + (currentWalletFilter === 'ALL' ? 'active' : '') + '" onclick="setWalletFilter(\'ALL\')">All Wallets</button>';
+        Object.keys(wallets).sort().forEach(function(w) { html += '<button class="wallet-btn ' + (currentWalletFilter === w ? 'active' : '') + '" onclick="setWalletFilter(\'' + w + '\')">' + w + '</button>'; });
+        container.innerHTML = html;
+    }
+
+    function setWalletFilter(wallet) {
+        currentWalletFilter = wallet; var activeTab = document.querySelector('.tab-content.active')?.id.replace('tab-', '') || 'all-transactions';
+        renderWalletNav(activeTab);
+        if (activeTab === 'all-transactions') renderAllTransactions(); else if (activeTab === 'offline') renderTransactions(); else if (activeTab === 'online') renderOnlineTransactions(); else if (activeTab === 'savings') renderSavings(); else if (activeTab === 'unknown') renderUnknownCash();
+        updateDashboard(activeTab);
+    }
+
+    function switchTab(tabId) {
+        currentWalletFilter = 'ALL';
+        document.body.classList.toggle('heatmap-active', tabId === 'heatmap');
+        if (['biz-all', 'stencil', 'naturals'].includes(tabId)) resetBusinessFilters();
+        
+        renderWalletNav(tabId);
+        updateDashboard(tabId); 
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); 
+        document.getElementById('tab-' + tabId).classList.add('active'); 
+        
+        var titles = {
+            'all-transactions': 'All Transactions', 'offline': 'Offline', 'online': 'Online', 'offerings': 'Donations',
+            'receivables': 'Receivables', 'lending': 'Lending', 'savings': 'Savings', 'unknown': 'Unknown/Inward', 'heatmap': 'Spending Heat Map',
+            'biz-all': 'All Business', 'stencil': 'Stencil', 'naturals': 'Naturals'
+        };
+        document.getElementById('currentTabTitle').textContent = titles[tabId] || 'All Transactions';
+
+        var addBtn = document.getElementById('addBtn');
+        if (addBtn) {
+            addBtn.style.display = tabId === 'heatmap' ? 'none' : 'block';
+            if (tabId === 'all-transactions' || tabId === 'offline') { addBtn.textContent = '➕ Add Offline'; addBtn.onclick = function() { showAddTransaction(); }; tabId === 'offline' ? renderTransactions() : renderAllTransactions(); }
+            else if (tabId === 'online') { addBtn.textContent = '🌐 Add Online'; addBtn.onclick = function() { document.getElementById('onDate').value = todayISO(); openModal('modalOnline'); }; renderOnlineTransactions(); }
+            else if (tabId === 'offerings') { addBtn.textContent = '🙏 Add Donation'; addBtn.onclick = function() { document.getElementById('donDate').value = todayISO(); openModal('modalDonation'); }; renderDonations(); }
+            else if (tabId === 'receivables') { addBtn.textContent = '📥 Add Receivable'; addBtn.onclick = function() { document.getElementById('recDate').value = todayISO(); openModal('modalReceivable'); }; renderReceivables(); }
+            else if (tabId === 'lending') { addBtn.textContent = '🤝 Add Lending'; addBtn.onclick = function() { document.getElementById('lenDate').value = todayISO(); openModal('modalLending'); }; renderLending(); }
+            else if (tabId === 'savings') { addBtn.textContent = '💰 Add Savings'; addBtn.onclick = showAddTransaction; renderSavings(); }
+            else if (tabId === 'unknown') { addBtn.textContent = '💵 Add Unknown'; addBtn.onclick = showAddTransaction; renderUnknownCash(); }
+            else if (tabId === 'biz-all') { addBtn.textContent = '🏭 Add Business Entry'; addBtn.onclick = function() { document.getElementById('bizDate').value = todayISO(); openModal('modalBusiness'); }; renderBizAll(); }
+            else if (tabId === 'stencil') { addBtn.textContent = '✂️ Add Stencil Entry'; addBtn.onclick = function() { document.getElementById('bizProject').value = 'STENCIL'; document.getElementById('bizDate').value = todayISO(); openModal('modalBusiness'); }; renderStencil(); }
+            else if (tabId === 'naturals') { addBtn.textContent = '🌿 Add Naturals Entry'; addBtn.onclick = function() { document.getElementById('bizProject').value = 'NATURALS'; document.getElementById('bizDate').value = todayISO(); openModal('modalBusiness'); }; renderNaturals(); }
+        }
+        if (tabId === 'heatmap') renderHeatmap();
+    }
+
+    function toggleLeftDrawer() {
+        document.getElementById('leftDrawer').classList.add('open');
+        document.getElementById('drawerOverlay').classList.add('open');
+    }
+    function toggleRightDrawer() {
+        document.getElementById('rightDrawer').classList.add('open');
+        document.getElementById('drawerOverlay').classList.add('open');
+    }
+    function closeDrawers() {
+        document.getElementById('leftDrawer').classList.remove('open');
+        document.getElementById('rightDrawer').classList.remove('open');
+        document.getElementById('drawerOverlay').classList.remove('open');
+    }
+    function toggleDrillDown(id) {
+        var menu = document.getElementById(id);
+        var arrow = document.getElementById('bizArrow');
+        if (menu.classList.contains('open')) {
+            menu.classList.remove('open');
+            arrow.textContent = '▼';
+        } else {
+            menu.classList.add('open');
+            arrow.textContent = '▲';
+        }
+    }
+
+    function resetBusinessFilters() {
+        if (document.getElementById('bizFilterType')) document.getElementById('bizFilterType').value = 'all';
+        if (document.getElementById('bizFilterParticulars')) document.getElementById('bizFilterParticulars').value = 'all';
+        if (document.getElementById('bizFilterMaterials')) document.getElementById('bizFilterMaterials').value = 'all';
+        if (document.getElementById('bizFilterMonth')) document.getElementById('bizFilterMonth').value = 'all';
+        if (document.getElementById('bizFromDate')) document.getElementById('bizFromDate').value = '';
+        if (document.getElementById('bizToDate')) document.getElementById('bizToDate').value = '';
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(function(overlay) { overlay.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); }); });
+    document.addEventListener('DOMContentLoaded', function() { loadAllData(); });
+    console.log('💰 Expense & Business Tracker loaded!');
+</script>
+</body>
+</html>
